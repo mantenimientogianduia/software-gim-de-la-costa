@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import { UserProfile } from '@/services/user.service';
 import UserManager from '@/components/admin/UserManager';
+import ClassScheduler from '@/components/classes/ClassScheduler';
 
 export default function AdminDashboard({ profile }: { profile: UserProfile }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'finance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'finance'>('overview');
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-on-surface">
@@ -27,6 +28,13 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
           >
             <span className={`material-symbols-outlined ${activeTab === 'users' ? 'icon-fill' : ''}`}>group</span>
             <span className="font-label font-bold uppercase text-sm">Socios</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('classes')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'classes' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'classes' ? 'icon-fill' : ''}`}>calendar_today</span>
+            <span className="font-label font-bold uppercase text-sm">Clases</span>
           </button>
           <button 
             onClick={() => setActiveTab('finance')}
@@ -96,6 +104,8 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
            )}
 
            {activeTab === 'users' && <UserManager />}
+
+           {activeTab === 'classes' && <ClassScheduler instructorId={profile.email} />}
 
            {activeTab === 'finance' && (
               <div className="bg-surface-container-low p-24 rounded-lg ghost-border text-center opacity-50">

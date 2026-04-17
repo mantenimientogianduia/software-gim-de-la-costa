@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { UserProfile } from '@/services/user.service';
 import SocioRoutineView from '@/components/routines/SocioRoutineView';
+import ClassBookingList from '@/components/classes/ClassBookingList';
 
 export default function SocioDashboard({ profile }: { profile: UserProfile }) {
   const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine'>('home');
@@ -116,10 +117,7 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
                 )}
 
                 {activeTab === 'classes' && (
-                  <div className="bg-surface-container-low p-12 rounded-lg ghost-border text-center opacity-50">
-                    <span className="material-symbols-outlined text-4xl mb-4">calendar_today</span>
-                    <p className="font-label uppercase tracking-widest">Reserva de clases próximamente</p>
-                  </div>
+                  <ClassBookingList userId={profile.email} />
                 )}
             </div>
             

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { UserProfile } from '@/services/user.service';
 import RoutineManager from '@/components/routines/RoutineManager';
+import ClassScheduler from '@/components/classes/ClassScheduler';
 
 export default function ProfesorDashboard({ profile }: { profile: UserProfile }) {
   const [activeTab, setActiveTab] = useState<'classes' | 'routines'>('classes');
@@ -38,17 +39,7 @@ export default function ProfesorDashboard({ profile }: { profile: UserProfile })
         
         <div className="p-6 md:p-10 flex flex-col gap-8 max-w-7xl mx-auto w-full">
            {activeTab === 'classes' ? (
-             <section className="bg-surface-container-low p-6 rounded-lg ghost-border">
-                <h2 className="font-headline text-2xl font-bold uppercase tracking-tight mb-6">Próxima Clase</h2>
-                <div className="bg-surface-container-highest p-6 rounded border-l-4 border-l-primary-container">
-                   <h3 className="font-headline text-3xl font-black uppercase tracking-tight">Crossfit Nivel 2</h3>
-                   <p className="font-label text-tertiary mt-2">Hoy, 18:00 - 19:00 hrs | <span className="text-primary font-bold">12/20 Inscriptos</span></p>
-                   <div className="mt-6 flex gap-4">
-                      <button className="bg-gradient-primary text-on-primary font-label font-bold uppercase px-6 py-2 rounded-sm shadow-glow hover:scale-[1.02] active:scale-[0.98] transition-transform">Pasar Asistencia</button>
-                      <button className="bg-surface border border-outline font-label uppercase px-6 py-2 rounded-sm hover:bg-surface-container-low transition-colors">Ver Alumnos</button>
-                   </div>
-                </div>
-             </section>
+             <ClassScheduler instructorId={profile.email} />
            ) : (
              <RoutineManager instructorId={profile.email} /> 
            )}

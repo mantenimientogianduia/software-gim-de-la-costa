@@ -1,5 +1,14 @@
 import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  collection, 
+  query, 
+  updateDoc, 
+  serverTimestamp 
+} from 'firebase/firestore';
 
 export interface UserProfile {
   email: string;
