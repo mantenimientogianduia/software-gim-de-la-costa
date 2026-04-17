@@ -57,6 +57,11 @@ export class UserService {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { status, updatedAt: serverTimestamp() });
   }
+
+  async updateUserRole(userId: string, role: 'admin' | 'profesor' | 'socio'): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { role, updatedAt: serverTimestamp() });
+  }
 }
 
 export const userService = new UserService();

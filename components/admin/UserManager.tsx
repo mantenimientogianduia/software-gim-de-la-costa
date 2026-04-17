@@ -30,6 +30,15 @@ export default function UserManager() {
     }
   };
 
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'profesor' | 'socio') => {
+    try {
+      await userService.updateUserRole(userId, newRole);
+      await fetchUsers();
+    } catch (err) {
+      alert('Error al actualizar rol');
+    }
+  };
+
   const filteredUsers = users.filter(u => {
     if (filter === 'all') return true;
     return u.status === filter;
@@ -75,9 +84,15 @@ export default function UserManager() {
                         {user.email}
                      </td>
                      <td className="p-6">
-                        <span className="font-label text-[9px] uppercase tracking-widest bg-surface-container-highest px-3 py-1 rounded text-primary-container font-black">
-                           {user.role}
-                        </span>
+                        <select 
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user.id, e.target.value as any)}
+                          className="font-label text-[9px] uppercase tracking-widest bg-surface-container-highest px-3 py-1 rounded text-primary-container font-black outline-none appearance-none cursor-pointer hover:bg-primary/20 transition-colors"
+                        >
+                          <option value="socio">Socio</option>
+                          <option value="profesor">Profesor</option>
+                          <option value="admin">Admin</option>
+                        </select>
                      </td>
                      <td className="p-6">
                         <div className="flex items-center gap-2">
