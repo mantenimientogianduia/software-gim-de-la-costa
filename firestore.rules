@@ -1,0 +1,220 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedAdmin() {
+      return request.auth != null && request.auth.token.email == 'gino.pieretti00@gmail.com';
+    }
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (isBootstrappedAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserDoc().role == 'admin'));
+    }
+
+    function isProfesor() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserDoc().role == 'profesor';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // -- Validation Helpers --
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'role', 'firstName', 'lastName', 'status', 'createdAt', 'updatedAt'])
+        && data.email is string && data.email.size() <= 200
+        && data.role is string && data.role in ['admin', 'profesor', 'socio']
+        && data.firstName is string && data.firstName.size() <= 100
+        && data.lastName is string && data.lastName.size() <= 100
+        && data.status is string && data.status in ['active', 'inactive', 'pending']
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidUserUpdate(data) {
+      return data.email is string && data.email.size() <= 200
+        && data.role is string && data.role in ['admin', 'profesor', 'socio']
+        && data.firstName is string && data.firstName.size() <= 100
+        && data.lastName is string && data.lastName.size() <= 100
+        && data.status is string && data.status in ['active', 'inactive', 'pending']
+        && data.updatedAt == request.time;
+    }
+
+    function isValidPrivateInfo(data) {
+      return (data.phone == null || (data.phone is string && data.phone.size() <= 50))
+        && (data.address == null || (data.address is string && data.address.size() <= 200))
+        && (data.medicalNotes == null || (data.medicalNotes is string && data.medicalNotes.size() <= 1000));
+    }
+
+    function isValidClass(data) {
+      return data.keys().hasAll(['title', 'instructorId', 'capacity', 'enrolled', 'startTime', 'endTime', 'status', 'createdAt'])
+        && data.title is string && data.title.size() <= 100
+        && data.instructorId is string && isValidId(data.instructorId)
+        && data.capacity is number && data.capacity > 0 && data.capacity <= 1000
+        && data.enrolled is number && data.enrolled >= 0
+        && data.startTime is string && data.startTime.size() <= 50
+        && data.endTime is string && data.endTime.size() <= 50
+        && data.status is string && data.status in ['scheduled', 'completed', 'cancelled']
+        && data.createdAt == request.time;
+    }
+
+    function isValidClassUpdate(data) {
+      return data.title is string && data.title.size() <= 100
+        && data.instructorId is string && isValidId(data.instructorId)
+        && data.capacity is number && data.capacity > 0 && data.capacity <= 1000
+        && data.enrolled is number && data.enrolled >= 0
+        && data.startTime is string && data.startTime.size() <= 50
+        && data.endTime is string && data.endTime.size() <= 50
+        && data.status is string && data.status in ['scheduled', 'completed', 'cancelled'];
+    }
+
+    function isValidBooking(data) {
+      return data.keys().hasAll(['userId', 'status', 'createdAt'])
+        && data.userId is string && isValidId(data.userId)
+        && data.status is string && data.status in ['confirmed', 'cancelled', 'attended']
+        && data.createdAt == request.time;
+    }
+
+    function isValidBookingUpdate(data) {
+      return data.userId is string && isValidId(data.userId)
+        && data.status is string && data.status in ['confirmed', 'cancelled', 'attended'];
+    }
+
+    function isValidRoutine(data) {
+      return data.keys().hasAll(['userId', 'instructorId', 'title', 'description', 'exercises', 'status', 'createdAt', 'updatedAt'])
+        && data.userId is string && isValidId(data.userId)
+        && data.instructorId is string && isValidId(data.instructorId)
+        && data.title is string && data.title.size() <= 150
+        && data.description is string && data.description.size() <= 1000
+        && data.exercises is list && data.exercises.size() <= 50
+        && (data.exercises.size() == 0 || data.exercises[0] is string)
+        && data.status is string && data.status in ['active', 'archived']
+        && data.createdAt == request.time
+        && data.updatedAt == request.time;
+    }
+
+    function isValidRoutineUpdate(data) {
+      return data.userId is string && isValidId(data.userId)
+        && data.instructorId is string && isValidId(data.instructorId)
+        && data.title is string && data.title.size() <= 150
+        && data.description is string && data.description.size() <= 1000
+        && data.exercises is list && data.exercises.size() <= 50
+        && (data.exercises.size() == 0 || data.exercises[0] is string)
+        && data.status is string && data.status in ['active', 'archived']
+        && data.updatedAt == request.time;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll(['userId', 'amount', 'status', 'dueDate', 'createdAt'])
+        && data.userId is string && isValidId(data.userId)
+        && data.amount is number && data.amount >= 0
+        && data.status is string && data.status in ['pending', 'paid', 'late', 'failed']
+        && data.dueDate is string && data.dueDate.size() <= 50
+        && data.createdAt == request.time;
+    }
+
+    function isValidPaymentUpdate(data) {
+      return data.userId is string && isValidId(data.userId)
+        && data.amount is number && data.amount >= 0
+        && data.status is string && data.status in ['pending', 'paid', 'late', 'failed']
+        && data.dueDate is string && data.dueDate.size() <= 50;
+    }
+
+    // -- Paths --
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && isValidId(userId);
+      allow list: if isAdmin() || isProfesor();
+      
+      allow create: if isSignedIn() && isValidId(userId) && request.auth.uid == userId
+        && isValidUser(incoming())
+        && incoming().keys().size() == 7
+        && (isAdmin() || incoming().role == 'socio'); // Only admins can create non-socios
+        
+      allow update: if isSignedIn() && isValidId(userId) && isValidUserUpdate(incoming()) && (
+        isAdmin() || 
+        (request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'updatedAt']) && incoming().role == existing().role && incoming().status == existing().status)
+      );
+      
+      allow delete: if false; // Soft deletes handled by status
+
+      match /private/{docId} {
+        allow read: if isSignedIn() && isValidId(userId) && isValidId(docId) && (request.auth.uid == userId || isAdmin() || isProfesor());
+        allow create: if isSignedIn() && isValidId(userId) && isValidId(docId) && request.auth.uid == userId 
+          && isValidPrivateInfo(incoming());
+        allow update: if isSignedIn() && isValidId(userId) && isValidId(docId) && request.auth.uid == userId 
+          && isValidPrivateInfo(incoming());
+      }
+    }
+
+    match /classes/{classId} {
+      allow get: if isSignedIn() && isValidId(classId);
+      allow list: if isSignedIn();
+      
+      allow create: if isAdmin() && isValidId(classId) && isValidClass(incoming()) && incoming().keys().size() == 8;
+      allow update: if isValidId(classId) && isValidClassUpdate(incoming()) && (
+        isAdmin() || 
+        (isProfesor() && existing().instructorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+      allow delete: if isAdmin() && isValidId(classId);
+
+      match /bookings/{bookingId} {
+        allow read: if isSignedIn() && isValidId(classId) && isValidId(bookingId) && (isAdmin() || isProfesor() || existing().userId == request.auth.uid);
+        allow list: if isSignedIn() && isValidId(classId) && (isAdmin() || isProfesor() || resource.data.userId == request.auth.uid);
+        
+        allow create: if isSignedIn() && isValidId(classId) && isValidId(bookingId) && isValidBooking(incoming()) && incoming().keys().size() == 3
+          && incoming().userId == request.auth.uid
+          && exists(/databases/$(database)/documents/classes/$(classId));
+          
+        allow update: if isSignedIn() && isValidId(classId) && isValidId(bookingId) && isValidBookingUpdate(incoming()) && (
+          isAdmin() || 
+          isProfesor() || 
+          (request.auth.uid == existing().userId && incoming().diff(existing()).affectedKeys().hasOnly(['status']) && incoming().userId == existing().userId)
+        );
+        allow delete: if false;
+      }
+    }
+
+    match /routines/{routineId} {
+      allow read: if isSignedIn() && isValidId(routineId) && (isAdmin() || isProfesor() || existing().userId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || isProfesor() || resource.data.userId == request.auth.uid);
+      
+      allow create: if isSignedIn() && isValidId(routineId) && isValidRoutine(incoming()) && incoming().keys().size() == 8
+        && (isAdmin() || (isProfesor() && incoming().instructorId == request.auth.uid));
+        
+      allow update: if isSignedIn() && isValidId(routineId) && isValidRoutineUpdate(incoming()) && (
+        isAdmin() || 
+        (isProfesor() && existing().instructorId == request.auth.uid && incoming().userId == existing().userId && incoming().instructorId == existing().instructorId)
+      );
+      allow delete: if isAdmin() && isValidId(routineId);
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && isValidId(paymentId) && (isAdmin() || existing().userId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      
+      allow create: if isAdmin() && isValidId(paymentId) && isValidPayment(incoming());
+      allow update: if isAdmin() && isValidId(paymentId) && isValidPaymentUpdate(incoming());
+      allow delete: if false;
+    }
+  }
+}

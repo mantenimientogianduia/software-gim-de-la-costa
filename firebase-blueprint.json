@@ -1,0 +1,117 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Public facing profile data and core role mapping.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "profesor", "socio"] },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive", "pending"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role", "firstName", "lastName", "status", "createdAt", "updatedAt"]
+    },
+    "UserPrivate": {
+      "title": "User Private Data",
+      "description": "PII for a user, split to avoid blanket reads.",
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "medicalNotes": { "type": "string" }
+      },
+      "required": []
+    },
+    "Class": {
+      "title": "Class Session",
+      "description": "A scheduled class session.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "instructorId": { "type": "string" },
+        "capacity": { "type": "number" },
+        "enrolled": { "type": "number" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["scheduled", "completed", "cancelled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "instructorId", "capacity", "enrolled", "startTime", "endTime", "status", "createdAt"]
+    },
+    "Booking": {
+      "title": "Class Booking",
+      "description": "A booking made by a socio for a specific class.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "status": { "type": "string", "enum": ["confirmed", "cancelled", "attended"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "status", "createdAt"]
+    },
+    "Routine": {
+      "title": "Workout Routine",
+      "description": "A routine assigned to a socio by a professor.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "instructorId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "exercises": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "instructorId", "title", "exercises", "status", "createdAt", "updatedAt"]
+    },
+    "Payment": {
+      "title": "Payment Record",
+      "description": "Payment history for a socio.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "paid", "late", "failed"] },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "paidDate": { "type": "string", "format": "date-time" },
+        "adminId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "status", "dueDate", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Core public profile data."
+    },
+    "users/{userId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "PII data for the user."
+    },
+    "classes/{classId}": {
+      "schema": { "$ref": "#/entities/Class" },
+      "description": "Class schedules and metadata."
+    },
+    "classes/{classId}/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Bookings for a specific class."
+    },
+    "routines/{routineId}": {
+      "schema": { "$ref": "#/entities/Routine" },
+      "description": "Workout routines assigned to users by instructors."
+    },
+    "payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "User payments and subscription tracking."
+    }
+  }
+}
