@@ -128,7 +128,7 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
                  </div>
                  
                  <div className="lg:col-span-4 flex flex-col gap-6">
-                    <QRGenerator userId={profile.email} />
+                    <QRGenerator dni={profile.dni} />
                  </div>
               </div>
             </>

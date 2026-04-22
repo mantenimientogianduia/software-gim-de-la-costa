@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 
 export interface UserProfile {
+  dni?: string;
   email: string;
   role: 'admin' | 'profesor' | 'socio';
   firstName: string;
@@ -25,9 +26,10 @@ export interface UserProfile {
 }
 
 export class UserService {
-  async createUserProfile(userId: string, email: string, firstName: string, lastName: string, role: 'admin' | 'profesor' | 'socio' = 'socio'): Promise<void> {
+  async createUserProfile(userId: string, email: string, firstName: string, lastName: string, role: 'admin' | 'profesor' | 'socio' = 'socio', dni?: string): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await setDoc(userRef, {
+      dni: dni || '',
       email,
       role,
       firstName,
@@ -38,6 +40,13 @@ export class UserService {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+  }
+
+  async getUserByDni(dni: string): Promise<(UserProfile & { id: string }) | null> {
+    const q = query(collection(db, 'users'), where('dni', '==', dni));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return { ...snap.docs[0].data(), id: snap.docs[0].id } as any;
   }
 
   async getUserByEmail(email: string): Promise<(UserProfile & { id: string }) | null> {
@@ -74,6 +83,11 @@ export class UserService {
   async updateUserRole(userId: string, role: 'admin' | 'profesor' | 'socio'): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { role, updatedAt: serverTimestamp() });
+  }
+
+  async updateUserDni(userId: string, dni: string): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { dni, updatedAt: serverTimestamp() });
   }
 }
 

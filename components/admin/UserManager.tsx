@@ -39,6 +39,15 @@ export default function UserManager() {
     }
   };
 
+  const handleDniChange = async (userId: string, dni: string) => {
+    try {
+      await userService.updateUserDni(userId, dni);
+      await fetchUsers();
+    } catch (err) {
+      alert('Error al actualizar DNI');
+    }
+  };
+
   const filteredUsers = users.filter(u => {
     if (filter === 'all') return true;
     return u.status === filter;
@@ -68,6 +77,7 @@ export default function UserManager() {
             <thead>
                <tr className="bg-surface-container-highest/30 border-b border-outline-variant/15">
                   <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Socio</th>
+                  <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">DNI (Acceso)</th>
                   <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Email</th>
                   <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Rol</th>
                   <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Estado</th>
@@ -79,6 +89,24 @@ export default function UserManager() {
                   <tr key={user.id} className="hover:bg-surface-container-high/50 transition-colors">
                      <td className="p-6 font-body font-bold uppercase tracking-tight text-sm">
                         {user.firstName} {user.lastName}
+                     </td>
+                     <td className="p-6">
+                        <input 
+                           type="text"
+                           defaultValue={user.dni || ''}
+                           placeholder="SIN DNI"
+                           onBlur={(e) => {
+                             if (e.target.value !== (user.dni || '')) {
+                               handleDniChange(user.id, e.target.value);
+                             }
+                           }}
+                           onKeyDown={(e) => {
+                             if (e.key === 'Enter') {
+                               (e.target as HTMLInputElement).blur();
+                             }
+                           }}
+                           className="bg-surface-container-highest px-3 py-2 rounded font-mono text-xs text-primary-container outline-none border border-transparent focus:border-primary w-32"
+                        />
                      </td>
                      <td className="p-6 font-body text-tertiary text-sm italic opacity-70">
                         {user.email}

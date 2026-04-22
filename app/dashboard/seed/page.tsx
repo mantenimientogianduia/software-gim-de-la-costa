@@ -185,14 +185,14 @@ export default function SeedPage() {
 
       addLog('Creando SOCIOS DE PRUEBA (Mocks)...');
       const mockSocios = [
-        { id: 'mock_socio_1', email: 'juan.perez@ficticio.com', firstName: 'Juan', lastName: 'Pérez' },
-        { id: 'mock_socio_2', email: 'maria.garcia@ficticio.com', firstName: 'María', lastName: 'García' },
-        { id: 'mock_socio_3', email: 'carlos.rodriguez@ficticio.com', firstName: 'Carlos', lastName: 'Rodríguez' },
-        { id: 'mock_socio_4', email: 'ana.martinez@ficticio.com', firstName: 'Ana', lastName: 'Martínez' },
+        { id: 'mock_socio_1', email: 'juan.perez@ficticio.com', firstName: 'Juan', lastName: 'Pérez', dni: '11223344' },
+        { id: 'mock_socio_2', email: 'maria.garcia@ficticio.com', firstName: 'María', lastName: 'García', dni: '22334455' },
+        { id: 'mock_socio_3', email: 'carlos.rodriguez@ficticio.com', firstName: 'Carlos', lastName: 'Rodríguez', dni: '33445566' },
+        { id: 'mock_socio_4', email: 'ana.martinez@ficticio.com', firstName: 'Ana', lastName: 'Martínez', dni: '44556677' },
       ];
 
       for (const socio of mockSocios) {
-        await userService.createUserProfile(socio.id, socio.email, socio.firstName, socio.lastName, 'socio');
+        await userService.createUserProfile(socio.id, socio.email, socio.firstName, socio.lastName, 'socio', socio.dni);
         // Force status to active for testing
         await userService.updateUserStatus(socio.id, 'active');
         addLog(`Socio creado: ${socio.firstName} ${socio.lastName} (${socio.email})`);

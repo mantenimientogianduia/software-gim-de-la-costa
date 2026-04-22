@@ -10,6 +10,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [needsDni, setNeedsDni] = useState(false);
+  const [pendingUser, setPendingUser] = useState<any>(null);
+  const [dniInput, setDniInput] = useState('');
 
   const handleGoogleLogin = async () => {
     setError('');
@@ -22,22 +25,14 @@ export default function LoginPage() {
       let profile = await userService.getUserProfile(user.uid);
       
       if (!profile) {
-        // Create basic profile for Google users if missing
-        const nameParts = user.displayName?.split(' ') || ['Admin', 'Costa'];
-        await userService.createUserProfile(
-          user.uid,
-          user.email || '',
-          nameParts[0],
-          nameParts.slice(1).join(' '),
-          isAdminEmail ? 'admin' : 'socio'
-        );
-        
-        // Re-fetch or update local state
         if (isAdminEmail) {
+          // Admin doesn't necessarily need DNI immediately or can have a dummy one
+          await userService.createUserProfile(user.uid, user.email || '', 'Admin', 'Costa', 'admin', '00000000');
           router.push('/dashboard');
-        } else {
-          setIsPending(true);
+          return;
         }
+        setPendingUser(user);
+        setNeedsDni(true);
       } else {
         // Update user to admin if they are the bootstrapped admin but don't have the role yet
         if (isAdminEmail && profile.role !== 'admin') {
@@ -54,6 +49,28 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión con Google');
+    } finally {
+      if (!needsDni) setLoading(false);
+    }
+  };
+
+  const handleCompleteRegistration = async () => {
+    if (!dniInput || !pendingUser) return;
+    setLoading(true);
+    try {
+      const nameParts = pendingUser.displayName?.split(' ') || ['Nuevo', 'Socio'];
+      await userService.createUserProfile(
+        pendingUser.uid,
+        pendingUser.email || '',
+        nameParts[0],
+        nameParts.slice(1).join(' '),
+        'socio',
+        dniInput
+      );
+      setNeedsDni(false);
+      setIsPending(true);
+    } catch (err: any) {
+      setError(err.message || 'Error al completar registro');
     } finally {
       setLoading(false);
     }
@@ -106,7 +123,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {!isPending && (
+            {!isPending && !needsDni && (
               <div className="space-y-6">
                 <button 
                   onClick={handleGoogleLogin}
@@ -120,6 +137,39 @@ export default function LoginPage() {
                 <div className="text-center font-label text-[10px] text-tertiary uppercase tracking-[0.2em] opacity-50">
                   Sistema de autenticación segura vía Google OAuth
                 </div>
+              </div>
+            )}
+
+            {!isPending && needsDni && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="space-y-2">
+                  <h3 className="font-headline font-bold text-xl uppercase tracking-tight">Casi listo</h3>
+                  <p className="text-tertiary text-sm italic">Ingresa tu DNI para habilitar tu acceso al gimnasio.</p>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary">badge</span>
+                  <input 
+                    type="text" 
+                    value={dniInput}
+                    onChange={(e) => setDniInput(e.target.value)}
+                    placeholder="DNI SIN PUNTOS" 
+                    className="w-full bg-surface-container-high pl-12 pr-4 py-4 rounded-sm outline-none font-headline font-bold text-xl border border-outline-variant/20 focus:border-primary transition-all"
+                    autoFocus
+                  />
+                </div>
+                <button 
+                  onClick={handleCompleteRegistration}
+                  disabled={!dniInput || loading}
+                  className="w-full bg-primary text-on-primary font-label text-sm font-bold uppercase tracking-widest py-4 rounded-sm shadow-glow hover:scale-[1.02] transition-all disabled:opacity-50"
+                >
+                  Confirmar y Finalizar
+                </button>
+                <button 
+                  onClick={() => setNeedsDni(false)}
+                  className="w-full text-tertiary font-label text-[10px] uppercase tracking-widest"
+                >
+                  Cancelar
+                </button>
               </div>
             )}
 
