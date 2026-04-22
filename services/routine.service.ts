@@ -100,8 +100,12 @@ export class RoutineService {
   // --- PLANS ---
   async createPlan(planData: Omit<TrainingPlan, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     const validated = TrainingPlanSchema.parse(planData);
+    // Firestore does not allow undefined. Filter them out.
+    const cleanData = Object.fromEntries(
+      Object.entries(validated).filter(([_, v]) => v !== undefined)
+    );
     const docRef = await addDoc(this.plansRef, {
-      ...validated,
+      ...cleanData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -124,8 +128,12 @@ export class RoutineService {
   // --- WEEKS ---
   async saveWeek(weekData: Omit<TrainingWeek, 'id'>): Promise<string> {
     const validated = TrainingWeekSchema.parse(weekData);
+    // Filter undefined
+    const cleanData = Object.fromEntries(
+      Object.entries(validated).filter(([_, v]) => v !== undefined)
+    );
     const newDocRef = doc(this.weeksRef);
-    await setDoc(newDocRef, validated);
+    await setDoc(newDocRef, cleanData);
     return newDocRef.id;
   }
 
@@ -168,8 +176,11 @@ export class RoutineService {
   // --- SESSIONS (EXECUTION) ---
   async recordSession(sessionData: Omit<WorkoutSession, 'id'>): Promise<string> {
     const validated = WorkoutSessionSchema.parse(sessionData);
+    const cleanData = Object.fromEntries(
+      Object.entries(validated).filter(([_, v]) => v !== undefined)
+    );
     const docRef = await addDoc(this.sessionsRef, {
-      ...validated,
+      ...cleanData,
       date: serverTimestamp(),
     });
     return docRef.id;
