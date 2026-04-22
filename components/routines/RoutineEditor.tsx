@@ -42,6 +42,7 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
 
   const [searchTerm, setSearchTerm] = useState('');
   const [newExName, setNewExName] = useState('');
+  const [assigningPlanId, setAssigningPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     userService.getAllUsers().then(data => setUsers(data as any));
@@ -130,42 +131,53 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
   };
 
   const handleViewTemplateDetails = async (plan: TrainingPlan) => {
+    if (!plan.id) return;
     setIsSaving(true);
     try {
+      console.log('Cargando plantilla:', plan.id);
       setTitle(plan.title);
       setDescription(plan.description || '');
       setLevel(plan.level);
-      const planWeeks = await routineService.getPlanWeeks(plan.id!);
+      
+      const planWeeks = await routineService.getPlanWeeks(plan.id);
+      console.log('Semanas encontradas:', planWeeks.length);
+
       if (planWeeks.length > 0) {
-        setWeeks(planWeeks.map(w => ({
+        const mappedWeeks: WeekState[] = planWeeks.map(w => ({
           order: w.order,
-          type: w.type,
+          type: w.type as any,
           goal: w.goal || '',
-          days: w.days
-        })));
+          days: w.days || []
+        }));
+        setWeeks(mappedWeeks);
+      } else {
+        // Fallback if no weeks found
+        setWeeks([
+          { order: 1, type: 'base', goal: '', days: [
+            { order: 1, name: 'Día 1', blocks: [{ type: 'main', exercises: [] }] }
+          ] }
+        ]);
       }
       setActiveTab('build');
       setActiveWeekIdx(0);
       setActiveDayIdx(0);
     } catch (err) {
-      console.error(err);
-      alert('Error al cargar la plantilla');
+      console.error('Error al cargar plantilla:', err);
+      alert('Error al cargar la plantilla: ' + (err instanceof Error ? err.message : 'Desconocido'));
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleQuickAssign = async (templateId: string) => {
-    const userEmail = prompt('Ingresa el email del socio a asignar:');
-    if (!userEmail) return;
-
+  const handleQuickAssign = async (templateId: string, userEmail: string) => {
     setIsSaving(true);
     try {
       await routineService.assignPlanToUser(templateId, userEmail, instructorId);
-      alert('Plan asignado con éxito');
+      alert('Plan asignado con éxito a ' + userEmail);
+      setAssigningPlanId(null);
     } catch (err) {
       console.error(err);
-      alert('Error al asignar el plan. Verifica que el email sea correcto.');
+      alert('Error al asignar el plan.');
     } finally {
       setIsSaving(false);
     }
@@ -516,7 +528,7 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
                      Ver Detalles
                    </button>
                    <button 
-                     onClick={() => handleQuickAssign(plan.id!)}
+                     onClick={() => setAssigningPlanId(plan.id!)}
                      className="flex-1 py-4 bg-primary text-white rounded-xl font-label text-[10px] font-black uppercase shadow-glow hover:scale-105 active:scale-95 transition-all"
                    >
                      Asignar
@@ -524,6 +536,59 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
                 </div>
               </div>
             ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PRO Assignment Modal */}
+      <AnimatePresence>
+        {assigningPlanId && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-surface-container-low w-full max-w-lg rounded-[2.5rem] p-8 ghost-border space-y-8"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="font-headline text-2xl font-black uppercase italic italic">Asignar Plan</h3>
+                  <p className="text-tertiary text-xs uppercase tracking-widest mt-1">Selecciona un socio de la lista</p>
+                </div>
+                <button 
+                  onClick={() => setAssigningPlanId(null)}
+                  className="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center hover:bg-error/10 hover:text-error transition-all"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {users.filter(u => u.role === 'socio' && u.status === 'active').map(socio => (
+                  <button 
+                    key={socio.id}
+                    onClick={() => handleQuickAssign(assigningPlanId, socio.email)}
+                    className="w-full flex items-center justify-between p-5 bg-surface-container-high rounded-2xl hover:bg-primary hover:text-white transition-all group border border-outline-variant/5"
+                  >
+                    <div className="text-left">
+                      <p className="font-headline font-bold uppercase text-sm">{socio.firstName} {socio.lastName}</p>
+                      <p className="text-[10px] opacity-50 font-mono">{socio.email}</p>
+                    </div>
+                    <span className="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0">chevron_right</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-outline-variant/10">
+                <p className="text-[10px] text-tertiary text-center uppercase tracking-widest leading-relaxed">
+                  Solo aparecen socios con estado <span className="text-primary font-black">ACTIVO</span>.
+                </p>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

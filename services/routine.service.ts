@@ -138,9 +138,12 @@ export class RoutineService {
   }
 
   async getPlanWeeks(planId: string): Promise<TrainingWeek[]> {
-    const q = query(this.weeksRef, where('planId', '==', planId), orderBy('order', 'asc'));
+    const q = query(this.weeksRef, where('planId', '==', planId));
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() } as TrainingWeek));
+    // Sort in memory to avoid complex index requirements
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() } as TrainingWeek))
+      .sort((a, b) => a.order - b.order);
   }
 
   // --- ASSIGNMENT (CLONING) ---
