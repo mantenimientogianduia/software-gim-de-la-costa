@@ -147,6 +147,41 @@ export default function SeedPage() {
       });
       addLog('Rutina 2 creada.');
 
+      addLog('Creando Rutina Completa 3: Cardio & Core (Template)...');
+      const plan3Id = await routineService.createPlan({
+        title: 'Acondicionamiento Metabólico',
+        description: 'Sesiones de alta intensidad para quema calórica y salud cardiovascular.',
+        type: 'template',
+        instructorId: user.email!,
+        status: 'active',
+        weeksCount: 4,
+        level: 'intermediate',
+        tags: ['Cardio', 'Core']
+      });
+
+      await routineService.saveWeek({
+        planId: plan3Id,
+        order: 1,
+        type: 'base',
+        goal: 'Capacidad aeróbica',
+        days: [
+          {
+            order: 1,
+            name: 'Día 1: HIIT',
+            blocks: [
+              {
+                type: 'main',
+                exercises: [
+                  { ...COMMON_EXERCISES[9], prescribed: { sets: 4, reps: '1 min', load: 'N/A' } },
+                  { name: 'Burpees', prescribed: { sets: 4, reps: '15', load: 'N/A' } },
+                ]
+              }
+            ]
+          }
+        ]
+      });
+      addLog('Rutina 3 creada.');
+
       setStatus('success');
       addLog('PROCESO FINALIZADO CON ÉXITO');
     } catch (err) {

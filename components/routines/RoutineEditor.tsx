@@ -123,8 +123,12 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
       setActiveTab('manage');
       routineService.getPlanTemplates().then(setMyPlans);
     } catch (err) {
-      console.error(err);
-      alert('Error al guardar');
+      console.error('Error detallado:', err);
+      if (err instanceof z.ZodError) {
+        alert('Error de validación: ' + err.errors.map(e => e.message).join(', '));
+      } else {
+        alert('Error al guardar: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+      }
     } finally {
       setIsSaving(false);
     }

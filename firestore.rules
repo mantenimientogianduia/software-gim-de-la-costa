@@ -26,6 +26,7 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     
+    // --- Training Plans & Pro Logic ---
     function isValidId(id) { 
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$'); 
     }
@@ -43,20 +44,15 @@ service cloud.firestore {
                (!('currentActivity' in data) || data.currentActivity is string);
       }
 
-      // Read: Users can see their own profile. Admins can see all. 
-      // Socios/Profs might need to see others names for classes later.
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
       allow list: if isAdmin(); 
 
-      // Create: Users can create their own profile on registration
       allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && 
                     incoming().email == request.auth.token.email &&
-                    // Self-registration is always pending socio unless it's Gino
                     (incoming().email == 'gino.pieretti00@gmail.com' ? 
                       (incoming().role == 'admin' && incoming().status == 'active') : 
                       (incoming().role == 'socio' && incoming().status == 'pending'));
 
-      // Update: Owners can update name. Admins can update everything (roles/status).
       allow update: if isSignedIn() && (
         (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'currentActivity', 'updatedAt']) && isValidUser(incoming())) ||
         (isAdmin() && isValidUser(incoming())) ||
@@ -64,7 +60,32 @@ service cloud.firestore {
       );
     }
 
-    // --- Routines Collection ---
+    match /training_plans/{planId} {
+      allow read: if isSignedIn() && (
+        isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email
+      );
+      allow create: if (isAdmin() || isProfesor()) && incoming().instructorId == request.auth.token.email;
+      allow update: if (isAdmin() || isProfesor()) && existing().instructorId == request.auth.token.email;
+      allow delete: if isAdmin();
+    }
+
+    match /training_weeks/{weekId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isProfesor();
+    }
+
+    match /workout_sessions/{sessionId} {
+      allow read: if isSignedIn() && (isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email);
+      allow create: if isSignedIn() && incoming().userId == request.auth.token.email;
+      allow update: if isSignedIn() && existing().userId == request.auth.token.email;
+    }
+
+    match /exercises/{exId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isProfesor();
+    }
+
+    // Legacy Support (keeping for compatibility during transition)
     match /routines/{routineId} {
       function isValidRoutine(data) {
         return data.userId is string && data.instructorId is string &&
