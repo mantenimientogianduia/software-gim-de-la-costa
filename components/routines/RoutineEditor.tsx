@@ -72,6 +72,28 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
     setActiveWeekIdx(weeks.length);
   };
 
+  const duplicateWeek = (idx: number) => {
+    const source = weeks[idx];
+    const newOrder = weeks.length + 1;
+    // Deep clone basic structure
+    const clone: WeekState = {
+      ...source,
+      order: newOrder,
+      days: source.days.map(day => ({
+        ...day,
+        blocks: day.blocks.map(block => ({
+          ...block,
+          exercises: block.exercises.map(ex => ({
+            ...ex,
+            prescribed: { ...ex.prescribed }
+          }))
+        }))
+      }))
+    };
+    setWeeks([...weeks, clone]);
+    setActiveWeekIdx(weeks.length);
+  };
+
   const addDay = (weekIdx: number) => {
     const updated = [...weeks];
     const newOrder = updated[weekIdx].days.length + 1;
@@ -125,7 +147,7 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
     } catch (err) {
       console.error('Error detallado:', err);
       if (err instanceof z.ZodError) {
-        alert('Error de validación: ' + err.errors.map(e => e.message).join(', '));
+        alert('Error de validación: ' + err.issues.map(e => e.message).join(', '));
       } else {
         alert('Error al guardar: ' + (err instanceof Error ? err.message : 'Error desconocido'));
       }
@@ -208,9 +230,17 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
                       ))}
                       <button 
                         onClick={addWeek}
-                        className="p-2 aspect-square rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center"
+                        className="p-2 aspect-square rounded-lg bg-surface-container-high text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center border border-outline-variant/10"
+                        title="Nueva Semana Vacía"
                       >
                         <span className="material-symbols-outlined text-sm">add</span>
+                      </button>
+                      <button 
+                        onClick={() => duplicateWeek(activeWeekIdx)}
+                        className="p-2 aspect-square rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center border border-primary/20"
+                        title="Duplicar Semana Actual"
+                      >
+                        <span className="material-symbols-outlined text-sm">content_copy</span>
                       </button>
                     </div>
                   </div>
