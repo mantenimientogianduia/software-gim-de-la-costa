@@ -38,7 +38,9 @@ service cloud.firestore {
                data.role in ['admin', 'profesor', 'socio'] &&
                data.firstName is string && data.firstName.size() <= 100 &&
                data.lastName is string && data.lastName.size() <= 100 &&
-               data.status in ['active', 'inactive', 'pending'];
+               data.status in ['active', 'inactive', 'pending'] &&
+               (!('atGym' in data) || data.atGym is bool) &&
+               (!('currentActivity' in data) || data.currentActivity is string);
       }
 
       // Read: Users can see their own profile. Admins can see all. 
@@ -56,8 +58,9 @@ service cloud.firestore {
 
       // Update: Owners can update name. Admins can update everything (roles/status).
       allow update: if isSignedIn() && (
-        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'updatedAt']) && isValidUser(incoming())) ||
-        (isAdmin() && isValidUser(incoming()))
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'currentActivity', 'updatedAt']) && isValidUser(incoming())) ||
+        (isAdmin() && isValidUser(incoming())) ||
+        (isProfesor() && incoming().diff(existing()).affectedKeys().hasOnly(['atGym', 'currentActivity', 'lastCheckIn', 'updatedAt']) && isValidUser(incoming()))
       );
     }
 
@@ -101,6 +104,18 @@ service cloud.firestore {
       allow create: if isSignedIn() && incoming().userId == request.auth.token.email &&
                     existsAfter(/databases/$(database)/documents/classes/$(incoming().classId)); 
       allow update, delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.token.email);
+    }
+
+    // --- Attendance Collection ---
+    match /attendance/{attendanceId} {
+      function isValidAttendance(data) {
+        return data.userId is string && 
+               data.status in ['present', 'completed'] &&
+               data.checkInAt is timestamp;
+      }
+      allow read: if isSignedIn() && (isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email);
+      allow create: if isAdmin() || isProfesor();
+      allow update: if (isAdmin() || isProfesor()) && isValidAttendance(incoming());
     }
   }
 }

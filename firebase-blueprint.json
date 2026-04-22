@@ -10,10 +10,25 @@
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
         "status": { "type": "string", "enum": ["active", "inactive", "pending"] },
+        "atGym": { "type": "boolean", "description": "Is the user currently at the gym?" },
+        "currentActivity": { "type": "string", "description": "Short description of current training" },
+        "lastCheckIn": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "role", "firstName", "lastName", "status"]
+    },
+    "Attendance": {
+      "title": "Attendance Record",
+      "description": "Log of user check-ins and check-outs",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "checkInAt": { "type": "string", "format": "date-time" },
+        "checkOutAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["present", "completed"] }
+      },
+      "required": ["userId", "checkInAt", "status"]
     },
     "Routine": {
       "title": "Workout Routine",
@@ -85,6 +100,10 @@
     "/bookings/{bookingId}": {
       "schema": "Booking",
       "description": "User class registrations"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "Attendance",
+      "description": "User gym check-in/out logs"
     }
   }
 }

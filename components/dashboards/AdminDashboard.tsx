@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { UserProfile } from '@/services/user.service';
 import UserManager from '@/components/admin/UserManager';
 import ClassScheduler from '@/components/classes/ClassScheduler';
+import QRScanner from '@/components/access/QRScanner';
+import LiveAttendance from '@/components/access/LiveAttendance';
 
 export default function AdminDashboard({ profile }: { profile: UserProfile }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'finance'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'finance' | 'access'>('overview');
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-on-surface">
@@ -37,6 +39,13 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
             <span className="font-label font-bold uppercase text-sm">Clases</span>
           </button>
           <button 
+            onClick={() => setActiveTab('access')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'access' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'access' ? 'icon-fill' : ''}`}>qr_code_scanner</span>
+            <span className="font-label font-bold uppercase text-sm">Control Acceso</span>
+          </button>
+          <button 
             onClick={() => setActiveTab('finance')}
             className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'finance' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
@@ -48,7 +57,13 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
       
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
         <header className="bg-surface sticky top-0 z-50 px-6 py-4 border-b border-outline-variant/15 flex justify-between items-center">
-           <h1 className="font-headline text-2xl font-black uppercase tracking-tighter">{activeTab === 'overview' ? 'Panel de Control' : activeTab === 'users' ? 'Gestión de Socios' : 'Finanzas'}</h1>
+           <h1 className="font-headline text-2xl font-black uppercase tracking-tighter">
+             {activeTab === 'overview' ? 'Panel de Control' : 
+              activeTab === 'users' ? 'Gestión de Socios' : 
+              activeTab === 'access' ? 'Scanner de Entrada' :
+              activeTab === 'classes' ? 'Agenda de Clases' :
+              'Finanzas'}
+           </h1>
            <div className="w-10 h-10 rounded-sm bg-surface-container-high flex items-center justify-center font-label font-bold text-primary">
               {profile.firstName.charAt(0)}{profile.lastName.charAt(0)}
            </div>
@@ -77,31 +92,18 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
                   </div>
                </section>
 
-               <section className="bg-surface-container-low rounded-lg p-6 ghost-border">
-                  <div className="flex justify-between items-center mb-6">
-                     <h2 className="font-headline text-xl font-bold uppercase tracking-tight">Últimos Ingresos</h2>
-                     <button className="font-label text-sm text-primary uppercase hover:underline">Ver todos</button>
-                  </div>
-                  <div className="flex flex-col">
-                     {[1,2,3].map((i) => (
-                        <div key={i} className="flex justify-between items-center py-4 border-b border-surface-container-lowest last:border-0">
-                           <div className="flex gap-4 items-center">
-                              <div className="w-12 h-12 rounded bg-surface-container-highest flex items-center justify-center font-headline font-bold">SOC</div>
-                              <div>
-                                 <p className="font-body font-bold text-on-surface">Juan Pérez</p>
-                                 <p className="font-label text-xs text-tertiary uppercase">Musculación</p>
-                              </div>
-                           </div>
-                           <div className="text-right">
-                              <p className="font-label font-bold text-sm text-on-surface">Hace 10 min</p>
-                              <span className="text-[10px] uppercase font-bold text-primary bg-primary/10 px-2 py-1 rounded inline-block mt-1">Al Día</span>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
+               <section className="bg-surface-container-low rounded-lg p-6 ghost-border border-t-2 border-t-primary">
+                  <LiveAttendance />
                </section>
-             </>
-           )}
+            </>
+          )}
+
+          {activeTab === 'access' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+               <QRScanner />
+               <LiveAttendance />
+            </div>
+          )}
 
            {activeTab === 'users' && <UserManager />}
 

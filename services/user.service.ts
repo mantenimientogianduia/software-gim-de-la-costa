@@ -6,6 +6,7 @@ import {
   getDocs, 
   collection, 
   query, 
+  where,
   updateDoc, 
   serverTimestamp 
 } from 'firebase/firestore';
@@ -16,6 +17,9 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   status: 'active' | 'inactive' | 'pending';
+  atGym?: boolean;
+  currentActivity?: string;
+  lastCheckIn?: any;
   createdAt: any;
   updatedAt: any;
 }
@@ -29,9 +33,18 @@ export class UserService {
       firstName,
       lastName,
       status: role === 'admin' ? 'active' : 'pending',
+      atGym: false,
+      currentActivity: '',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+  }
+
+  async getUserByEmail(email: string): Promise<(UserProfile & { id: string }) | null> {
+    const q = query(collection(db, 'users'), where('email', '==', email));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return { ...snap.docs[0].data(), id: snap.docs[0].id } as any;
   }
 
   async getUserProfile(userId: string): Promise<UserProfile | null> {
