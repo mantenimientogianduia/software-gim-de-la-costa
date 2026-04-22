@@ -181,26 +181,47 @@ export class RoutineService {
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as WorkoutSession));
   }
 
-  // Legacy compatibility for global library search
+  // --- MASTER EXERCISES ---
+  async getMasterExercises(): Promise<Exercise[]> {
+    const exRef = collection(db, 'exercises');
+    const snap = await getDocs(query(exRef, orderBy('name', 'asc')));
+    return snap.docs.map(d => d.data() as Exercise);
+  }
+
+  async addMasterExercise(ex: Exercise): Promise<void> {
+    const exRef = doc(collection(db, 'exercises'), ex.name.toLowerCase().replace(/\s+/g, '_'));
+    await setDoc(exRef, ex);
+  }
+
+  // Updated to combine master and discovered exercises
   async getAllExercises(): Promise<Exercise[]> {
-    // This is expensive but useful for the simplified search
+    const master = await this.getMasterExercises();
+    
+    // Discover from plans (legacy/dynamic)
     const snap = await getDocs(this.weeksRef);
-    const allEx: Map<string, Exercise> = new Map();
+    const discovered: Map<string, Exercise> = new Map();
 
     snap.docs.forEach(doc => {
       const week = doc.data() as TrainingWeek;
       week.days.forEach(day => {
         day.blocks.forEach(block => {
           block.exercises.forEach(ex => {
-            if (!allEx.has(ex.name.toLowerCase())) {
-              allEx.set(ex.name.toLowerCase(), ex);
+            if (!discovered.has(ex.name.toLowerCase())) {
+              discovered.set(ex.name.toLowerCase(), ex);
             }
           });
         });
       });
     });
 
-    return Array.from(allEx.values());
+    // Merge: Master takes priority or just combine unique names
+    const final: Map<string, Exercise> = new Map();
+    master.forEach(ex => final.set(ex.name.toLowerCase(), ex));
+    discovered.forEach((ex, name) => {
+      if (!final.has(name)) final.set(name, ex);
+    });
+
+    return Array.from(final.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 }
 

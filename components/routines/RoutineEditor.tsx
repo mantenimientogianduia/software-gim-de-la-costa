@@ -41,12 +41,25 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
   const [activeDayIdx, setActiveDayIdx] = useState(0);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [newExName, setNewExName] = useState('');
 
   useEffect(() => {
     userService.getAllUsers().then(data => setUsers(data as any));
     routineService.getAllExercises().then(setExerciseLibrary);
     routineService.getPlanTemplates().then(setMyPlans);
   }, [instructorId]);
+
+  const handleAddMasterExercise = async () => {
+    if (!newExName) return;
+    const newEx: Exercise = {
+      name: newExName,
+      prescribed: { sets: 3, reps: '10', load: 'RPE 8' }
+    };
+    await routineService.addMasterExercise(newEx);
+    const updatedLib = await routineService.getAllExercises();
+    setExerciseLibrary(updatedLib);
+    setNewExName('');
+  };
 
   const addWeek = () => {
     const newOrder = weeks.length + 1;
@@ -330,10 +343,29 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
 
             {/* LIBRARY SIDE */}
             <div className="xl:col-span-4 space-y-6">
-               <div className="bg-surface-container-low p-8 rounded-[2rem] ghost-border sticky top-24">
-                  <h3 className="font-headline text-lg font-black uppercase tracking-tight mb-6">Biblioteca Global</h3>
-                  
-                  <div className="relative mb-6">
+                <div className="bg-surface-container-low p-8 rounded-[2rem] ghost-border sticky top-24">
+                   <h3 className="font-headline text-lg font-black uppercase tracking-tight mb-6">Biblioteca Global</h3>
+                   
+                   <div className="space-y-4 mb-8 pb-6 border-b border-outline-variant/10">
+                     <label className="font-label text-[8px] uppercase tracking-widest text-tertiary">Nuevo Ejercicio</label>
+                     <div className="flex gap-2">
+                       <input 
+                         type="text"
+                         placeholder="Nombre del ej: Prensa..."
+                         value={newExName}
+                         onChange={(e) => setNewExName(e.target.value)}
+                         className="flex-1 bg-surface-container-high px-4 py-2 rounded-lg outline-none font-body text-xs border border-outline-variant/10 focus:border-primary transition-all"
+                       />
+                       <button 
+                         onClick={handleAddMasterExercise}
+                         className="bg-primary text-white p-2 rounded-lg hover:scale-105 active:scale-95 transition-all"
+                       >
+                         <span className="material-symbols-outlined text-sm">add</span>
+                       </button>
+                     </div>
+                   </div>
+
+                   <div className="relative mb-6">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-tertiary text-lg">search</span>
                     <input 
                       type="text"

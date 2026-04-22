@@ -1,22 +1,28 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 
 import AdminDashboard from '@/components/dashboards/AdminDashboard';
 import ProfesorDashboard from '@/components/dashboards/ProfesorDashboard';
 import SocioDashboard from '@/components/dashboards/SocioDashboard';
+import RoleSwitcher from '@/components/debug/RoleSwitcher';
+
+type UserRole = 'admin' | 'profesor' | 'socio';
+
+const DEV_EMAIL = 'gino.pieretti00@gmail.com';
 
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
+  const [overrideRole, setOverrideRole] = useState<UserRole | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
-    if (!loading && profile && profile.status === 'pending' && profile.role !== 'admin') {
+    if (!loading && profile && profile.status === 'pending' && profile.role !== 'admin' && user?.email !== DEV_EMAIL) {
       router.push('/login');
     }
   }, [user, profile, loading, router]);
@@ -29,17 +35,35 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user || !profile || (profile.status === 'pending' && profile.role !== 'admin')) {
-    return null; // Redirects via useEffect
+  if (!user || !profile || (profile.status === 'pending' && profile.role !== 'admin' && user.email !== DEV_EMAIL)) {
+    return null; 
   }
 
-  if (profile.role === 'admin') {
-    return <AdminDashboard profile={profile} />;
-  }
+  const activeRole = overrideRole || (profile.role as UserRole);
+  const isDev = user.email === DEV_EMAIL;
 
-  if (profile.role === 'profesor') {
-    return <ProfesorDashboard profile={profile} />;
-  }
+  const renderDashboard = () => {
+    const dashboardProfile = { ...profile, role: activeRole };
 
-  return <SocioDashboard profile={profile} />;
+    switch (activeRole) {
+      case 'admin':
+        return <AdminDashboard profile={dashboardProfile} />;
+      case 'profesor':
+        return <ProfesorDashboard profile={dashboardProfile} />;
+      default:
+        return <SocioDashboard profile={dashboardProfile} />;
+    }
+  };
+
+  return (
+    <>
+      {isDev && (
+        <RoleSwitcher 
+          currentRole={activeRole} 
+          onRoleChange={setOverrideRole} 
+        />
+      )}
+      {renderDashboard()}
+    </>
+  );
 }
