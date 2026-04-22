@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { routineService, Exercise } from '@/services/routine.service';
+import { userService } from '@/services/user.service';
 import { useAuth } from '@/hooks/use-auth';
 
 const COMMON_EXERCISES: Exercise[] = [
@@ -181,6 +182,21 @@ export default function SeedPage() {
         ]
       });
       addLog('Rutina 3 creada.');
+
+      addLog('Creando SOCIOS DE PRUEBA (Mocks)...');
+      const mockSocios = [
+        { id: 'mock_socio_1', email: 'juan.perez@ficticio.com', firstName: 'Juan', lastName: 'Pérez' },
+        { id: 'mock_socio_2', email: 'maria.garcia@ficticio.com', firstName: 'María', lastName: 'García' },
+        { id: 'mock_socio_3', email: 'carlos.rodriguez@ficticio.com', firstName: 'Carlos', lastName: 'Rodríguez' },
+        { id: 'mock_socio_4', email: 'ana.martinez@ficticio.com', firstName: 'Ana', lastName: 'Martínez' },
+      ];
+
+      for (const socio of mockSocios) {
+        await userService.createUserProfile(socio.id, socio.email, socio.firstName, socio.lastName, 'socio');
+        // Force status to active for testing
+        await userService.updateUserStatus(socio.id, 'active');
+        addLog(`Socio creado: ${socio.firstName} ${socio.lastName} (${socio.email})`);
+      }
 
       setStatus('success');
       addLog('PROCESO FINALIZADO CON ÉXITO');

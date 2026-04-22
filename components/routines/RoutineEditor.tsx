@@ -110,9 +110,65 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
     const updated = [...weeks];
     updated[weekIdx].days[dayIdx].blocks[blockIdx].exercises.push({
       ...ex,
-      prescribed: { sets: 3, reps: '10-12', load: 'RPE 8' }
+      prescribed: ex.prescribed || { sets: 3, reps: '10-12', load: 'RPE 8' }
     });
     setWeeks(updated);
+  };
+
+  const handleReset = () => {
+    setTitle('');
+    setDescription('');
+    setLevel('beginner');
+    setSelectedUser('');
+    setWeeks([
+      { order: 1, type: 'base', goal: '', days: [
+        { order: 1, name: 'Día 1', blocks: [{ type: 'main', exercises: [] }] }
+      ] }
+    ]);
+    setActiveWeekIdx(0);
+    setActiveDayIdx(0);
+  };
+
+  const handleViewTemplateDetails = async (plan: TrainingPlan) => {
+    setIsSaving(true);
+    try {
+      setTitle(plan.title);
+      setDescription(plan.description || '');
+      setLevel(plan.level);
+      const planWeeks = await routineService.getPlanWeeks(plan.id!);
+      if (planWeeks.length > 0) {
+        setWeeks(planWeeks.map(w => ({
+          order: w.order,
+          type: w.type,
+          goal: w.goal || '',
+          days: w.days
+        })));
+      }
+      setActiveTab('build');
+      setActiveWeekIdx(0);
+      setActiveDayIdx(0);
+    } catch (err) {
+      console.error(err);
+      alert('Error al cargar la plantilla');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleQuickAssign = async (templateId: string) => {
+    const userEmail = prompt('Ingresa el email del socio a asignar:');
+    if (!userEmail) return;
+
+    setIsSaving(true);
+    try {
+      await routineService.assignPlanToUser(templateId, userEmail, instructorId);
+      alert('Plan asignado con éxito');
+    } catch (err) {
+      console.error(err);
+      alert('Error al asignar el plan. Verifica que el email sea correcto.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSave = async (asTemplate: boolean = true) => {
@@ -142,6 +198,7 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
       }
 
       alert(asTemplate ? 'Plantilla guardada' : 'Plan asignado con éxito');
+      handleReset();
       setActiveTab('manage');
       routineService.getPlanTemplates().then(setMyPlans);
     } catch (err) {
@@ -358,6 +415,12 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
                    </div>
                    <div className="flex gap-4">
                      <button 
+                       onClick={handleReset}
+                       className="px-6 py-4 bg-error/10 text-error rounded-xl font-label text-xs font-black uppercase tracking-widest hover:bg-error hover:text-white transition-all outline outline-1 outline-error/20"
+                     >
+                       Vaciar
+                     </button>
+                     <button 
                        onClick={() => handleSave(true)}
                        className="px-8 py-4 bg-surface-container-highest rounded-xl font-label text-xs font-black uppercase tracking-widest hover:bg-white/5 transition-all outline outline-1 outline-outline-variant/10"
                      >
@@ -446,8 +509,18 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
                    </div>
                 </div>
                 <div className="flex gap-3">
-                   <button className="flex-1 py-4 bg-surface-container-highest rounded-xl font-label text-[10px] font-black uppercase hover:bg-primary transition-all">Ver Detalles</button>
-                   <button className="flex-1 py-4 bg-primary text-white rounded-xl font-label text-[10px] font-black uppercase shadow-glow hover:scale-105 active:scale-95 transition-all">Asignar</button>
+                   <button 
+                     onClick={() => handleViewTemplateDetails(plan)}
+                     className="flex-1 py-4 bg-surface-container-highest rounded-xl font-label text-[10px] font-black uppercase hover:bg-primary transition-all"
+                   >
+                     Ver Detalles
+                   </button>
+                   <button 
+                     onClick={() => handleQuickAssign(plan.id!)}
+                     className="flex-1 py-4 bg-primary text-white rounded-xl font-label text-[10px] font-black uppercase shadow-glow hover:scale-105 active:scale-95 transition-all"
+                   >
+                     Asignar
+                   </button>
                 </div>
               </div>
             ))}
