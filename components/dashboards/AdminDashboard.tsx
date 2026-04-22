@@ -5,9 +5,10 @@ import UserManager from '@/components/admin/UserManager';
 import ClassScheduler from '@/components/classes/ClassScheduler';
 import QRScanner from '@/components/access/QRScanner';
 import LiveAttendance from '@/components/access/LiveAttendance';
+import RoutineEditor from '@/components/routines/RoutineEditor';
 
 export default function AdminDashboard({ profile }: { profile: UserProfile }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'finance' | 'access'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'finance' | 'access' | 'routines'>('overview');
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-on-surface">
@@ -46,6 +47,13 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
             <span className="font-label font-bold uppercase text-sm">Control Acceso</span>
           </button>
           <button 
+            onClick={() => setActiveTab('routines')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'routines' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'routines' ? 'icon-fill' : ''}`}>fitness_center</span>
+            <span className="font-label font-bold uppercase text-sm">Rutinas</span>
+          </button>
+          <button 
             onClick={() => setActiveTab('finance')}
             className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'finance' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
@@ -62,6 +70,7 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
               activeTab === 'users' ? 'Gestión de Socios' : 
               activeTab === 'access' ? 'Scanner de Entrada' :
               activeTab === 'classes' ? 'Agenda de Clases' :
+              activeTab === 'routines' ? 'Editor de Rutinas' :
               'Finanzas'}
            </h1>
            <div className="w-10 h-10 rounded-sm bg-surface-container-high flex items-center justify-center font-label font-bold text-primary">
@@ -106,6 +115,8 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
           )}
 
            {activeTab === 'users' && <UserManager />}
+
+           {activeTab === 'routines' && <RoutineEditor instructorId={profile.email} />}
 
            {activeTab === 'classes' && <ClassScheduler instructorId={profile.email} />}
 

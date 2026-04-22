@@ -83,6 +83,25 @@ export class RoutineService implements IRoutineService {
     if (!snap.exists()) return null;
     return { id: snap.id, ...snap.data() } as Routine;
   }
+
+  async getAllExercises(): Promise<Exercise[]> {
+    const q = query(this.collectionRef);
+    const snap = await getDocs(q);
+    const allEx: Exercise[] = [];
+    const names = new Set<string>();
+
+    snap.docs.forEach(doc => {
+      const routine = doc.data() as Routine;
+      routine.exercises.forEach(ex => {
+        if (!names.has(ex.name.toLowerCase())) {
+          allEx.push(ex);
+          names.add(ex.name.toLowerCase());
+        }
+      });
+    });
+
+    return allEx;
+  }
 }
 
 export const routineService = new RoutineService();

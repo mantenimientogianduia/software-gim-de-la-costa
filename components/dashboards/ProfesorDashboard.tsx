@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { UserProfile } from '@/services/user.service';
-import RoutineManager from '@/components/routines/RoutineManager';
+import RoutineEditor from '@/components/routines/RoutineEditor';
 import ClassScheduler from '@/components/classes/ClassScheduler';
 
 export default function ProfesorDashboard({ profile }: { profile: UserProfile }) {
@@ -41,7 +41,7 @@ export default function ProfesorDashboard({ profile }: { profile: UserProfile })
            {activeTab === 'classes' ? (
              <ClassScheduler instructorId={profile.email} />
            ) : (
-             <RoutineManager instructorId={profile.email} /> 
+             <RoutineEditor instructorId={profile.email} /> 
            )}
         </div>
       </main>
