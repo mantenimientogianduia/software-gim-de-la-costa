@@ -64,9 +64,9 @@ export const TrainingPlanSchema = z.object({
 });
 
 export const SetRecordSchema = z.object({
-  reps: z.number(),
-  weight: z.number(),
-  rpe: z.number().min(1).max(10).optional(),
+  reps: z.number().default(0),
+  weight: z.number().default(0),
+  rpe: z.number().min(0).max(10).optional().default(0),
   rest: z.string().optional(),
 });
 
@@ -76,15 +76,15 @@ export const WorkoutSessionSchema = z.object({
   planId: z.string(),
   weekOrder: z.number(),
   dayOrder: z.number(),
-  date: z.any(),
-  duration: z.number().optional(), // minutes
-  feeling: z.enum(['tired', 'good', 'great', 'injured']).optional(),
-  energy: z.number().min(1).max(10).optional(),
+  date: z.any().optional(),
+  duration: z.number().optional().default(0), // minutes
+  feeling: z.enum(['tired', 'good', 'great', 'injured']).optional().default('good'),
+  energy: z.number().min(0).max(10).optional().default(8),
   exercises: z.array(z.object({
     name: z.string(),
     sets: z.array(SetRecordSchema),
   })),
-  notes: z.string().optional(),
+  notes: z.string().optional().default(''),
 });
 
 export type TrainingPlan = z.infer<typeof TrainingPlanSchema>;

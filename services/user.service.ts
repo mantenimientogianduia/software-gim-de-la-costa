@@ -21,6 +21,8 @@ export interface UserProfile {
   atGym?: boolean;
   currentActivity?: string;
   lastCheckIn?: any;
+  membershipValidUntil?: any;
+  lastPaymentDate?: any;
   createdAt: any;
   updatedAt: any;
 }

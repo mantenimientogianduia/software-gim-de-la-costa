@@ -6,6 +6,47 @@ export default function UserManager() {
   const [users, setUsers] = useState<(UserProfile & { id: string })[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'active'>('all');
+  const [isCreating, setIsCreating] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    dni: '',
+    role: 'socio' as const
+  });
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      // For manually created users, we might use a random ID or the email as ID if they yet to sign in via Google
+      // Actually, since they will sign in with Google, we should ideally use the DNI or just let them sign in normally.
+      // But user says 'producir que ellos puedan entrar por primera vez'.
+      // If I create the profile now, when they login with Google, authService will find the profile.
+      // I'll used a prefixed ID "manual_" + DNI which is temporary until they login? No, let's just use a random ID.
+      const tempId = `temp_${Date.now()}`;
+      await userService.createUserProfile(
+        tempId,
+        newUserData.email,
+        newUserData.firstName,
+        newUserData.lastName,
+        newUserData.role,
+        newUserData.dni
+      );
+      // Ensure status is active for manual users?
+      await userService.updateUserStatus(tempId, 'active');
+      
+      setIsCreating(false);
+      setNewUserData({ firstName: '', lastName: '', email: '', dni: '', role: 'socio' });
+      await fetchUsers();
+      alert('Socio creado correctamente. Puede iniciar sesión con Google usando el email ingresado.');
+    } catch (err) {
+      console.error(err);
+      alert('Error al crear usuario');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -67,10 +108,68 @@ export default function UserManager() {
              </button>
            ))}
         </div>
-        <div className="font-label text-xs text-tertiary uppercase tracking-widest">
-           Total: {filteredUsers.length} usuarios
-        </div>
+        <button 
+          onClick={() => setIsCreating(!isCreating)}
+          className="bg-primary-container text-on-primary-container px-6 py-2 rounded-sm font-label text-[10px] uppercase font-bold tracking-widest hover:scale-105 transition-all"
+        >
+          {isCreating ? 'Cerrar Formulario' : 'Crear Nuevo Usuario'}
+        </button>
       </div>
+
+      {isCreating && (
+        <div className="bg-surface-container-low p-8 rounded-lg ghost-border animate-in slide-in-from-top-4 duration-300">
+           <h3 className="font-headline font-bold text-xl uppercase tracking-tight mb-6">Nuevo Usuario</h3>
+           <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <input 
+                required
+                placeholder="Nombres"
+                value={newUserData.firstName}
+                onChange={e => setNewUserData({...newUserData, firstName: e.target.value})}
+                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body uppercase text-sm"
+              />
+              <input 
+                required
+                placeholder="Apellidos"
+                value={newUserData.lastName}
+                onChange={e => setNewUserData({...newUserData, lastName: e.target.value})}
+                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body uppercase text-sm"
+              />
+              <input 
+                required
+                type="email"
+                placeholder="Email (para Google Login)"
+                value={newUserData.email}
+                onChange={e => setNewUserData({...newUserData, email: e.target.value.toLowerCase()})}
+                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
+              />
+              <input 
+                required
+                placeholder="DNI"
+                value={newUserData.dni}
+                onChange={e => setNewUserData({...newUserData, dni: e.target.value})}
+                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
+              />
+              <select 
+                value={newUserData.role}
+                onChange={e => setNewUserData({...newUserData, role: e.target.value as any})}
+                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-label text-[10px] uppercase tracking-widest"
+              >
+                <option value="socio">Socio</option>
+                <option value="profesor">Profesor</option>
+                <option value="admin">Administrador</option>
+              </select>
+              <div className="lg:col-span-1 flex items-end">
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full bg-gradient-primary text-on-primary py-4 rounded-sm font-label text-[10px] font-black uppercase tracking-[0.2em] shadow-glow"
+                >
+                  {loading ? 'Creando...' : 'Guardar Usuario'}
+                </button>
+              </div>
+           </form>
+        </div>
+      )}
 
       <div className="bg-surface-container-low rounded-lg overflow-hidden ghost-border">
          <table className="w-full text-left border-collapse">

@@ -7,29 +7,74 @@ import { Timestamp } from 'firebase/firestore';
 export default function ClassScheduler({ instructorId }: { instructorId: string }) {
   const { classes, loading, refreshClasses } = useClasses();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     capacity: 20,
     date: '',
-    time: ''
+    time: '',
+    weeksCount: 4,
+    days: [] as number[],
   });
+
+  const daysOfWeek = [
+    { label: 'L', value: 1 },
+    { label: 'M', value: 2 },
+    { label: 'M', value: 3 },
+    { label: 'J', value: 4 },
+    { label: 'V', value: 5 },
+    { label: 'S', value: 6 },
+    { label: 'D', value: 0 },
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const start = new Date(`${formData.date}T${formData.time}`);
-    const end = new Date(start.getTime() + 60 * 60 * 1000); // Default 1 hour
-    
-    await classService.createClass({
-      title: formData.title,
-      instructorId,
-      startTime: Timestamp.fromDate(start),
-      endTime: Timestamp.fromDate(end),
-      capacity: Number(formData.capacity),
-      status: 'active'
-    });
-    
-    setIsFormOpen(false);
-    refreshClasses();
+    try {
+      if (isRecurring) {
+        if (formData.days.length === 0) {
+          alert('Selecciona al menos un día para la recurrencia.');
+          return;
+        }
+        await classService.createRecurringClasses({
+          title: formData.title,
+          instructorId,
+          capacity: Number(formData.capacity),
+          status: 'active'
+        }, {
+          days: formData.days,
+          startTimeStr: formData.time,
+          durationMin: 60
+        }, formData.weeksCount);
+      } else {
+        const start = new Date(`${formData.date}T${formData.time}`);
+        const end = new Date(start.getTime() + 60 * 60 * 1000); // Default 1 hour
+        
+        await classService.createClass({
+          title: formData.title,
+          instructorId,
+          startTime: Timestamp.fromDate(start),
+          endTime: Timestamp.fromDate(end),
+          capacity: Number(formData.capacity),
+          status: 'active'
+        });
+      }
+      
+      setIsFormOpen(false);
+      refreshClasses();
+      alert('Clase(s) publicada(s) con éxito.');
+    } catch (err) {
+      console.error(err);
+      alert('Error al publicar clases');
+    }
+  };
+
+  const toggleDay = (day: number) => {
+    setFormData(prev => ({
+      ...prev,
+      days: prev.days.includes(day) 
+        ? prev.days.filter(d => d !== day)
+        : [...prev.days, day]
+    }));
   };
 
   return (
@@ -45,7 +90,22 @@ export default function ClassScheduler({ instructorId }: { instructorId: string 
       </div>
 
       {isFormOpen && (
-        <div className="bg-surface-container-high p-8 rounded-lg shadow-2xl ghost-border mb-8">
+        <div className="bg-surface-container-high p-8 rounded-lg shadow-2xl ghost-border mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+           <div className="flex bg-surface-container-low p-1 rounded-sm gap-1 mb-8 max-w-xs mx-auto">
+              <button 
+                onClick={() => setIsRecurring(false)}
+                className={`flex-1 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${!isRecurring ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
+              >
+                Individual
+              </button>
+              <button 
+                onClick={() => setIsRecurring(true)}
+                className={`flex-1 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${isRecurring ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
+              >
+                Recurrente
+              </button>
+           </div>
+
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <input 
@@ -53,16 +113,18 @@ export default function ClassScheduler({ instructorId }: { instructorId: string 
                 placeholder="Título de la Clase (ej: Crossfit Nivel 2)"
                 value={formData.title}
                 onChange={e => setFormData({...formData, title: e.target.value})}
-                className="w-full bg-surface-container-low p-4 font-body border-b-2 border-surface-container-highest outline-none focus:border-primary"
+                className="w-full bg-surface-container-low p-4 font-body border-b-2 border-surface-container-highest outline-none focus:border-primary uppercase text-sm"
               />
             </div>
-            <input 
-              required
-              type="date"
-              value={formData.date}
-              onChange={e => setFormData({...formData, date: e.target.value})}
-              className="bg-surface-container-low p-4 font-body border-b-2 border-surface-container-highest outline-none focus:border-primary"
-            />
+            {!isRecurring && (
+              <input 
+                required
+                type="date"
+                value={formData.date}
+                onChange={e => setFormData({...formData, date: e.target.value})}
+                className="bg-surface-container-low p-4 font-body border-b-2 border-surface-container-highest outline-none focus:border-primary"
+              />
+            )}
             <input 
               required
               type="time"
@@ -78,9 +140,38 @@ export default function ClassScheduler({ instructorId }: { instructorId: string 
               onChange={e => setFormData({...formData, capacity: Number(e.target.value)})}
               className="bg-surface-container-low p-4 font-body border-b-2 border-surface-container-highest outline-none focus:border-primary"
             />
+            {isRecurring && (
+               <div className="md:col-span-2 space-y-6">
+                  <div className="flex flex-wrap gap-3">
+                    {daysOfWeek.map((day, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => toggleDay(day.value)}
+                        className={`w-12 h-12 rounded-full font-label text-xs font-bold transition-all border ${formData.days.includes(day.value) ? 'bg-primary text-white border-primary shadow-glow' : 'bg-surface-container-low text-tertiary border-outline-variant/10'}`}
+                      >
+                        {day.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-4">
+                     <span className="font-label text-xs uppercase tracking-widest text-tertiary">Semanas a generar:</span>
+                     <input 
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={formData.weeksCount}
+                        onChange={e => setFormData({...formData, weeksCount: Number(e.target.value)})}
+                        className="bg-surface-container-low p-2 w-20 rounded font-mono text-sm text-center outline-none border border-outline-variant/10"
+                     />
+                  </div>
+               </div>
+            )}
             <div className="md:col-span-2 flex justify-end gap-4 mt-4">
               <button type="button" onClick={() => setIsFormOpen(false)} className="font-label text-xs uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity px-6">Cancelar</button>
-              <button type="submit" className="bg-gradient-primary text-on-primary font-label text-xs font-bold uppercase tracking-widest px-10 py-4 rounded-sm shadow-glow">Publicar Horario</button>
+              <button type="submit" className="bg-gradient-primary text-on-primary font-label text-xs font-bold uppercase tracking-widest px-10 py-4 rounded-sm shadow-glow">
+                {isRecurring ? 'Generar Cronograma' : 'Publicar Clase'}
+              </button>
             </div>
           </form>
         </div>

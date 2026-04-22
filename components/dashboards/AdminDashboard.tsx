@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { UserProfile } from '@/services/user.service';
 import UserManager from '@/components/admin/UserManager';
+import FinanceManager from '@/components/admin/FinanceManager';
 import ClassScheduler from '@/components/classes/ClassScheduler';
 import QRScanner from '@/components/access/QRScanner';
 import LiveAttendance from '@/components/access/LiveAttendance';
@@ -120,12 +121,7 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
 
            {activeTab === 'classes' && <ClassScheduler instructorId={profile.email} />}
 
-           {activeTab === 'finance' && (
-              <div className="bg-surface-container-low p-24 rounded-lg ghost-border text-center opacity-50">
-                <span className="material-symbols-outlined text-4xl mb-4">payments</span>
-                <p className="font-label uppercase tracking-widest">Módulo de finanzas próximamente</p>
-              </div>
-           )}
+           {activeTab === 'finance' && <FinanceManager />}
         </div>
       </main>
     </div>

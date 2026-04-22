@@ -51,6 +51,39 @@ export class ClassService {
     return newDoc.id;
   }
 
+  async createRecurringClasses(
+    data: Omit<GymClass, 'id' | 'enrolledCount' | 'createdAt' | 'startTime' | 'endTime'>,
+    pattern: {
+      days: number[]; // 0 for Sunday, 1 for Monday...
+      startTimeStr: string; // "20:00"
+      durationMin: number;
+    },
+    weeksCount: number = 4
+  ): Promise<void> {
+    const now = new Date();
+    
+    for (let i = 0; i < weeksCount; i++) {
+       for (const day of pattern.days) {
+          const date = new Date();
+          date.setDate(now.getDate() + (i * 7) + (day - now.getDay()));
+          
+          const [hours, minutes] = pattern.startTimeStr.split(':').map(Number);
+          date.setHours(hours, minutes, 0, 0);
+
+          if (date < now) continue;
+
+          const endTime = new Date(date);
+          endTime.setMinutes(date.getMinutes() + pattern.durationMin);
+
+          await this.createClass({
+            ...data,
+            startTime: date,
+            endTime: endTime,
+          });
+       }
+    }
+  }
+
   async getActiveClasses(): Promise<GymClass[]> {
     const q = query(this.classesRef, where('status', '==', 'active'));
     const snap = await getDocs(q);

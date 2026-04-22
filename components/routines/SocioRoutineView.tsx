@@ -62,7 +62,9 @@ export default function SocioRoutineView({ userId }: { userId: string }) {
         date: new Date().toISOString(),
         exercises: sessionResults,
         feeling: 'good',
-        energy: 8
+        energy: 8,
+        duration: 0,
+        notes: ''
       });
       alert('¡Entrenamiento registrado con éxito! Tu profesor ya puede ver tu progreso.');
     } catch (err) {

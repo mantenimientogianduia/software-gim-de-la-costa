@@ -128,6 +128,39 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
                  </div>
                  
                  <div className="lg:col-span-4 flex flex-col gap-6">
+                    <section className="bg-surface-container-low p-8 rounded-[2rem] ghost-border relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
+                       <h3 className="font-headline font-bold text-lg uppercase tracking-tight mb-6">Membresía</h3>
+                       
+                       <div className="space-y-6 relative z-10">
+                          {profile.membershipValidUntil ? (
+                             <>
+                                <div>
+                                   <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-1">Tu cuenta vence el</p>
+                                   <p className="font-headline text-3xl font-black italic tracking-tighter text-primary">
+                                      {profile.membershipValidUntil.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                   </p>
+                                </div>
+                                <div className="h-1 bg-surface-container-high rounded-full overflow-hidden">
+                                   <div className={`h-full bg-primary transition-all duration-1000 ${
+                                      (profile.membershipValidUntil.toDate().getTime() - new Date().getTime()) < 0 ? 'bg-error w-full' : 'w-2/3'
+                                   }`}></div>
+                                </div>
+                                <p className="font-body text-xs text-tertiary italic">
+                                   {(profile.membershipValidUntil.toDate().getTime() - new Date().getTime()) < 0 
+                                      ? 'Tu cuota está vencida. Por favor, regulariza tu situación en administración.' 
+                                      : 'Tu membresía se encuentra activa y vigente.'}
+                                </p>
+                             </>
+                          ) : (
+                             <div className="py-4 text-center">
+                                <span className="material-symbols-outlined text-4xl text-tertiary mb-2">event_busy</span>
+                                <p className="font-label text-xs uppercase tracking-widest text-tertiary">Sin datos de membresía</p>
+                                <p className="text-[10px] text-tertiary/50 mt-2 italic">Consulta en administración para activar tu plan.</p>
+                             </div>
+                          )}
+                       </div>
+                    </section>
                     <QRGenerator dni={profile.dni} />
                  </div>
               </div>
