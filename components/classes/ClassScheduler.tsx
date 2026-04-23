@@ -4,9 +4,12 @@ import { classService, GymClass } from '@/services/class.service';
 import { useClasses } from '@/hooks/use-classes';
 import { Timestamp } from 'firebase/firestore';
 
+import WeeklyCalendar from '@/components/classes/WeeklyCalendar';
+
 export default function ClassScheduler({ instructorId }: { instructorId: string }) {
   const { classes, loading, refreshClasses } = useClasses();
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('calendar');
   const [isRecurring, setIsRecurring] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -80,7 +83,25 @@ export default function ClassScheduler({ instructorId }: { instructorId: string 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">
-        <h2 className="font-headline text-2xl font-bold uppercase tracking-tight">Agenda de Clases</h2>
+        <div className="flex items-center gap-8">
+           <h2 className="font-headline text-2xl font-bold uppercase tracking-tight">Agenda de Clases</h2>
+           <div className="flex bg-surface-container-low p-1 rounded-sm gap-1 border border-outline-variant/10">
+              <button 
+                onClick={() => setViewMode('calendar')}
+                className={`flex items-center gap-2 px-4 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${viewMode === 'calendar' ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
+              >
+                <span className="material-symbols-outlined text-sm">calendar_view_week</span>
+                Calendario
+              </button>
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-2 px-4 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${viewMode === 'grid' ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
+              >
+                <span className="material-symbols-outlined text-sm">grid_view</span>
+                Cuadrícula
+              </button>
+           </div>
+        </div>
         <button 
           onClick={() => setIsFormOpen(true)}
           className="bg-primary text-on-primary font-label text-sm font-bold uppercase tracking-widest px-6 py-3 rounded-sm hover:scale-105 active:scale-95 transition-all"
@@ -177,27 +198,31 @@ export default function ClassScheduler({ instructorId }: { instructorId: string 
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {classes.map(c => (
-          <div key={c.id} className="bg-surface-container-low p-6 rounded-lg ghost-border relative overflow-hidden group">
-            <div className="relative z-10">
-              <div className="flex justify-between items-start mb-4">
-                <h4 className="font-headline font-bold text-lg uppercase tracking-tight">{c.title}</h4>
-                <div className="bg-primary/20 text-primary-container px-2 py-1 rounded font-label text-[9px] uppercase font-black">
-                  {c.enrolledCount} / {c.capacity}
+      {viewMode === 'calendar' ? (
+        <WeeklyCalendar classes={classes} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {classes.map(c => (
+            <div key={c.id} className="bg-surface-container-low p-6 rounded-lg ghost-border relative overflow-hidden group">
+              <div className="relative z-10">
+                <div className="flex justify-between items-start mb-4">
+                  <h4 className="font-headline font-bold text-lg uppercase tracking-tight">{c.title}</h4>
+                  <div className="bg-primary/20 text-primary-container px-2 py-1 rounded font-label text-[9px] uppercase font-black">
+                    {c.enrolledCount} / {c.capacity}
+                  </div>
+                </div>
+                <p className="font-label text-xs text-tertiary uppercase tracking-widest mb-4">
+                  {c.startTime.toDate().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })} | {c.startTime.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+                <div className="pt-4 border-t border-outline-variant/15 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="font-label text-[10px] text-tertiary uppercase italic">Coach: {c.instructorId}</span>
+                  <button className="text-error font-label text-[10px] uppercase font-bold hover:underline">Cancelar</button>
                 </div>
               </div>
-              <p className="font-label text-xs text-tertiary uppercase tracking-widest mb-4">
-                {c.startTime.toDate().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })} | {c.startTime.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-              <div className="pt-4 border-t border-outline-variant/15 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="font-label text-[10px] text-tertiary uppercase italic">Coach: {c.instructorId}</span>
-                <button className="text-error font-label text-[10px] uppercase font-bold hover:underline">Cancelar</button>
-              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
