@@ -47,7 +47,7 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
   }, [weekHeading.monday]);
 
   const filteredClasses = useMemo(() => {
-    const start = weekHeading.monday;
+    const start = new Date(weekHeading.monday);
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setDate(start.getDate() + 7);
@@ -58,6 +58,26 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
     });
   }, [classes, weekHeading.monday]);
 
+  const dynamicHours = useMemo(() => {
+    if (filteredClasses.length === 0) return Array.from({ length: 17 }, (_, i) => i + 6);
+    
+    const earliestHour = Math.min(...filteredClasses.map(c => c.startTime.toDate().getHours()));
+    const latestHour = Math.max(...filteredClasses.map(c => {
+      const end = c.endTime?.toDate ? c.endTime.toDate() : new Date(c.startTime.toDate().getTime() + 60 * 60 * 1000);
+      return end.getHours();
+    }));
+
+    // Requirement: if no classes before 12, start at 11 or 12.
+    // Let's use 11 as a "pro" padding if everything is in the afternoon.
+    const startHour = earliestHour >= 12 ? 11 : 6;
+    const endHour = Math.max(20, latestHour + 1);
+
+    const length = endHour - startHour + 1;
+    return Array.from({ length }, (_, i) => i + startHour);
+  }, [filteredClasses]);
+
+  const startHour = dynamicHours[0];
+
   const changeWeek = (offset: number) => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() + offset * 7);
@@ -66,11 +86,11 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
 
   const getPositionStyles = (gymClass: GymClass) => {
     const date = gymClass.startTime.toDate();
-    const startHour = date.getHours();
+    const currentHour = date.getHours();
     const startMinutes = date.getMinutes();
     
     // Rows are 60px high
-    const top = (startHour - 6) * 60 + (startMinutes / 60) * 60;
+    const top = (currentHour - startHour) * 60 + (startMinutes / 60) * 60;
     
     // Assume 1 hour duration if not specified
     const end = gymClass.endTime?.toDate ? gymClass.endTime.toDate() : new Date(date.getTime() + 60 * 60 * 1000);
@@ -132,7 +152,7 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
           <div className="grid grid-cols-[80px_repeat(7,1fr)] relative">
             {/* Time Indicators (Column 0) */}
             <div className="flex flex-col">
-              {HOURS.map(hour => (
+              {dynamicHours.map(hour => (
                 <div key={hour} className="h-[60px] border-r border-outline-variant/10 border-b border-outline-variant/5 relative">
                   <span className="absolute -top-2 right-3 font-mono text-[10px] text-tertiary opacity-50">{hour}:00</span>
                 </div>
@@ -142,7 +162,7 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
             {/* Grid Cells */}
             {Array.from({ length: 7 }).map((_, colIdx) => (
               <div key={colIdx} className="relative border-r border-outline-variant/10 bg-grid-white/[0.02]">
-                {HOURS.map(hour => (
+                {dynamicHours.map(hour => (
                   <div key={hour} className="h-[60px] border-b border-outline-variant/5"></div>
                 ))}
                 

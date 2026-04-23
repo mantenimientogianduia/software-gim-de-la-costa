@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { UserProfile } from '@/services/user.service';
 import UserManager from '@/components/admin/UserManager';
 import FinanceManager from '@/components/admin/FinanceManager';
+import AdminOverview from '@/components/admin/AdminOverview';
 import ClassScheduler from '@/components/classes/ClassScheduler';
 import QRScanner from '@/components/access/QRScanner';
 import LiveAttendance from '@/components/access/LiveAttendance';
@@ -13,55 +14,73 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-on-surface">
-      <aside className="hidden md:flex flex-col h-full w-80 bg-surface-container-low py-8 z-40 border-r border-outline-variant/15">
-        <div className="px-6 mb-12">
-          <h2 className="font-headline text-xl text-primary-container font-black tracking-tighter uppercase">GYM DE LA COSTA</h2>
-          <div className="mt-4 font-label font-bold uppercase tracking-tight text-on-surface">ADMIN FUNCTIONS</div>
+      <aside className="hidden md:flex flex-col h-full w-72 bg-surface-container-low py-10 z-40 border-r border-outline-variant/10 relative">
+        <div className="absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-transparent via-primary/50 to-transparent opacity-30"></div>
+        <div className="px-8 mb-16">
+          <div className="flex items-center gap-3 mb-2">
+             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+                <span className="material-symbols-outlined text-white text-lg font-black">fitness_center</span>
+             </div>
+             <h2 className="font-headline text-lg text-primary-container font-black tracking-tighter uppercase italic">COSTA GYM</h2>
+          </div>
+          <div className="font-label text-[10px] font-black uppercase tracking-[0.3em] text-tertiary opacity-50">Control Central</div>
         </div>
-        <nav className="flex-1 flex flex-col gap-2">
+        <nav className="flex-1 flex flex-col gap-1 px-4">
           <button 
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'overview' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'overview' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
-            <span className={`material-symbols-outlined ${activeTab === 'overview' ? 'icon-fill' : ''}`}>dashboard</span>
-            <span className="font-label font-bold uppercase text-sm">Dashboard</span>
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'overview' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>dashboard</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Dashboard</span>
           </button>
           <button 
             onClick={() => setActiveTab('users')}
-            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'users' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'users' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
-            <span className={`material-symbols-outlined ${activeTab === 'users' ? 'icon-fill' : ''}`}>group</span>
-            <span className="font-label font-bold uppercase text-sm">Socios</span>
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'users' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>group</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Socios</span>
           </button>
           <button 
             onClick={() => setActiveTab('classes')}
-            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'classes' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'classes' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
-            <span className={`material-symbols-outlined ${activeTab === 'classes' ? 'icon-fill' : ''}`}>calendar_today</span>
-            <span className="font-label font-bold uppercase text-sm">Clases</span>
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'classes' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>calendar_today</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Clases</span>
           </button>
           <button 
             onClick={() => setActiveTab('access')}
-            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'access' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'access' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
-            <span className={`material-symbols-outlined ${activeTab === 'access' ? 'icon-fill' : ''}`}>qr_code_scanner</span>
-            <span className="font-label font-bold uppercase text-sm">Control Acceso</span>
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'access' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>qr_code_scanner</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Control</span>
           </button>
           <button 
             onClick={() => setActiveTab('routines')}
-            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'routines' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'routines' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
-            <span className={`material-symbols-outlined ${activeTab === 'routines' ? 'icon-fill' : ''}`}>fitness_center</span>
-            <span className="font-label font-bold uppercase text-sm">Rutinas</span>
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'routines' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>fitness_center</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Rutinas</span>
           </button>
           <button 
             onClick={() => setActiveTab('finance')}
-            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'finance' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'finance' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
-            <span className={`material-symbols-outlined ${activeTab === 'finance' ? 'icon-fill' : ''}`}>payments</span>
-            <span className="font-label font-bold uppercase text-sm">Finanzas</span>
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'finance' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>payments</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Finanzas</span>
           </button>
         </nav>
+        
+        <div className="mt-auto px-8 py-6 border-t border-outline-variant/10">
+           <div className="flex items-center gap-4 opacity-50 hover:opacity-100 transition-opacity cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-bold text-xs ring-1 ring-outline-variant/20">
+                 {profile.firstName.charAt(0)}
+              </div>
+              <div>
+                 <p className="font-label text-[10px] font-black uppercase leading-tight">{profile.firstName}</p>
+                 <p className="font-label text-[8px] uppercase tracking-tighter text-tertiary">Administrador</p>
+              </div>
+           </div>
+        </div>
       </aside>
       
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
@@ -78,37 +97,11 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
               {profile.firstName.charAt(0)}{profile.lastName.charAt(0)}
            </div>
         </header>
-        
         <div className="p-6 md:p-10 flex flex-col gap-8 max-w-7xl mx-auto w-full">
-           {activeTab === 'overview' && (
-             <>
-               <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-surface-container-low rounded-lg p-6 ghost-border relative overflow-hidden">
-                     <div className="absolute top-0 right-0 p-4 opacity-10"><span className="material-symbols-outlined text-8xl">group</span></div>
-                     <h3 className="font-label text-sm uppercase text-tertiary mb-2">Socios Activos</h3>
-                     <div className="font-headline text-6xl font-black mb-2 tracking-tighter">482</div>
-                     <div className="flex items-center gap-2 text-primary font-label text-sm"><span className="material-symbols-outlined text-sm">trending_up</span><span>Estable</span></div>
-                  </div>
-                  <div onClick={() => setActiveTab('users')} className="bg-gradient-primary rounded-lg p-6 relative overflow-hidden shadow-glow cursor-pointer hover:scale-[1.02] transition-transform">
-                     <h3 className="font-label text-sm uppercase text-on-primary mb-2">Nuevos Socios</h3>
-                     <div className="font-headline text-6xl font-black text-on-primary-container mb-2 tracking-tighter">+12</div>
-                     <div className="font-label text-xs text-on-primary opacity-80 uppercase">Este Mes</div>
-                  </div>
-                  <div className="bg-surface-container-low rounded-lg p-6 ghost-border border-l-4 border-l-error relative overflow-hidden">
-                     <div className="absolute top-0 right-0 p-4 opacity-10 text-error"><span className="material-symbols-outlined text-8xl">warning</span></div>
-                     <h3 className="font-label text-sm uppercase text-error mb-2">Pagos Vencidos</h3>
-                     <div className="font-headline text-6xl font-black mb-2 tracking-tighter">24</div>
-                     <div className="font-label text-xs text-error uppercase cursor-pointer hover:underline mt-4">Ver Lista Completa <span className="material-symbols-outlined text-xs">arrow_forward</span></div>
-                  </div>
-               </section>
+           {activeTab === 'overview' && <AdminOverview />}
 
-               <section className="bg-surface-container-low rounded-lg p-6 ghost-border border-t-2 border-t-primary">
-                  <LiveAttendance />
-               </section>
-            </>
-          )}
+           {activeTab === 'access' && (
 
-          {activeTab === 'access' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                <QRScanner />
                <LiveAttendance />
