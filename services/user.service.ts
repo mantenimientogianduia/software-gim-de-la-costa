@@ -25,6 +25,24 @@ export interface UserProfile {
   lastPaymentDate?: any;
   createdAt: any;
   updatedAt: any;
+  // Onboarding & Profile
+  onboardingCompleted?: boolean;
+  onboardingData?: {
+    age?: number;
+    weight?: number;
+    height?: number;
+    goal?: string;
+    experience?: string;
+    interests?: string[];
+  };
+  // Gamification & Progress
+  streak?: {
+    current: number;
+    best: number;
+    lastActivityDate?: any;
+    activityHistory?: string[]; // ISO Dates
+  };
+  achievements?: string[]; // Achievement IDs
 }
 
 export class UserService {
@@ -90,6 +108,55 @@ export class UserService {
   async updateUserDni(userId: string, dni: string): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { dni, updatedAt: serverTimestamp() });
+  }
+
+  async completeOnboarding(userId: string, data: UserProfile['onboardingData']): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { 
+      onboardingData: data, 
+      onboardingCompleted: true, 
+      updatedAt: serverTimestamp() 
+    });
+  }
+
+  async recordActivity(userId: string): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) return;
+
+    const data = snap.data() as UserProfile;
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Initialize streak if missing
+    const streak = data.streak || { current: 0, best: 0, activityHistory: [] };
+    
+    // Don't record twice the same day
+    if (streak.activityHistory?.includes(today)) return;
+
+    const lastDateStr = streak.lastActivityDate ? new Date(streak.lastActivityDate.toDate?.() || streak.lastActivityDate).toISOString().split('T')[0] : null;
+    
+    let newCurrent = 1;
+    if (lastDateStr) {
+      const lastDate = new Date(lastDateStr);
+      const diff = (new Date(today).getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      
+      if (diff === 1) {
+        newCurrent = streak.current + 1;
+      }
+    }
+
+    const newBest = Math.max(streak.best, newCurrent);
+    const newHistory = [...(streak.activityHistory || []), today];
+
+    await updateDoc(userRef, {
+      streak: {
+        current: newCurrent,
+        best: newBest,
+        lastActivityDate: serverTimestamp(),
+        activityHistory: newHistory
+      },
+      updatedAt: serverTimestamp()
+    });
   }
 }
 

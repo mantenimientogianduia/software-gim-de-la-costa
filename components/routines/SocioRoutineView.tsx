@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { routineService, TrainingPlan, TrainingWeek, WorkoutSession } from '@/services/routine.service';
+import { progressService } from '@/services/progress.service';
+import { userService } from '@/services/user.service';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SocioRoutineView({ userId }: { userId: string }) {
@@ -66,7 +68,21 @@ export default function SocioRoutineView({ userId }: { userId: string }) {
         duration: 0,
         notes: ''
       });
-      alert('¡Entrenamiento registrado con éxito! Tu profesor ya puede ver tu progreso.');
+
+      // Record Activity (Streak)
+      await userService.recordActivity(userId);
+
+      // Check and Record PRs (Daily Max Weight per Exercise)
+      for (const exResult of sessionResults) {
+        const weights = exResult.sets.map((s: any) => s.weight).filter((w: any) => w > 0);
+        if (weights.length > 0) {
+          const maxWeight = Math.max(...weights);
+          const relevantSet = exResult.sets.find((s: any) => s.weight === maxWeight);
+          await progressService.recordPR(userId, exResult.name, exResult.name, maxWeight, relevantSet.reps || 0);
+        }
+      }
+
+      alert('¡Entrenamiento registrado con éxito! Tu progreso ha sido actualizado 🔥');
     } catch (err) {
       console.error(err);
       alert('Error al registrar');

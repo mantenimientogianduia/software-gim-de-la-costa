@@ -3,9 +3,12 @@ import { useState } from 'react';
 import { UserProfile, userService } from '@/services/user.service';
 import { attendanceService } from '@/services/attendance.service';
 import SocioRoutineView from '@/components/routines/SocioRoutineView';
+import Timer from '@/components/training/Timer';
+import { AnimatePresence } from 'framer-motion';
 
 export default function SessionView({ profile }: { profile: UserProfile }) {
   const [loading, setLoading] = useState(false);
+  const [showTimer, setShowTimer] = useState(false);
 
   const handleManualCheckout = async () => {
     if (!window.confirm('¿Estás seguro de que deseas finalizar tu sesión de entrenamiento?')) return;
@@ -47,6 +50,25 @@ export default function SessionView({ profile }: { profile: UserProfile }) {
       </div>
 
       <SocioRoutineView userId={profile.email} />
+
+      <div className="fixed bottom-32 right-6 md:right-12 z-50">
+         <button 
+           onClick={() => setShowTimer(!showTimer)}
+           className={`w-16 h-16 rounded-full flex items-center justify-center shadow-glow-error transition-all ${showTimer ? 'bg-surface-container-high text-primary rotate-90' : 'bg-primary text-white hover:scale-110'}`}
+         >
+           <span className="material-symbols-outlined text-3xl">{showTimer ? 'close' : 'timer'}</span>
+         </button>
+      </div>
+
+      <AnimatePresence>
+        {showTimer && (
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+             <div className="max-w-md w-full">
+                <Timer onClose={() => setShowTimer(false)} />
+             </div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
