@@ -5,11 +5,8 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
-    setupFiles: ['./vitest.setup.ts'],
-    alias: {
-      '@': resolve(__dirname, './'),
-    },
+    environment: 'node',
+    alias: { '@': resolve(__dirname, './') },
     include: ['**/*.test.ts', '**/*.test.tsx'],
   },
 });

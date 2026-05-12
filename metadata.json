@@ -1,5 +1,8 @@
 {
-  "name": "Gym Flow Pro",
-  "description": "Elite gym management and member community platform with real-time access control and pro training tools.",
-  "requestFramePermissions": []
+  "name": "Gym De La Costa",
+  "description": "Sistema de gestión integral para el Gym De La Costa, incluyendo socios, pagos, rutinas y reserva de clases.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
 }
