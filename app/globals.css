@@ -25,9 +25,9 @@
   --color-outline: #ab8980;
   --color-outline-variant: #5b4039;
 
-  --font-headline: "Lexend", sans-serif;
-  --font-body: "Work Sans", sans-serif;
-  --font-label: "Space Grotesk", sans-serif;
+  --font-headline: Arial, Helvetica, sans-serif;
+  --font-body: Arial, Helvetica, sans-serif;
+  --font-label: Arial, Helvetica, sans-serif;
 
   --default-border-radius: 0.125rem;
   --radius-sm: 0.125rem;

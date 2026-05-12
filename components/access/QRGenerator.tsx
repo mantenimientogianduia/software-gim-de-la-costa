@@ -1,5 +1,6 @@
 'use client';
 import { QRCodeSVG } from 'qrcode.react';
+import { createAccessPassPayload } from '@/lib/access-pass';
 
 export default function QRGenerator({ dni }: { dni?: string }) {
   if (!dni) {
@@ -18,7 +19,7 @@ export default function QRGenerator({ dni }: { dni?: string }) {
     <div className="flex flex-col items-center gap-6 p-8 bg-surface-container-low rounded-xl ghost-border overflow-hidden group border-t-4 border-t-primary">
       <div className="relative p-6 bg-white rounded-2xl shadow-glow transition-transform hover:scale-105 duration-500">
         <QRCodeSVG 
-          value={dni} 
+          value={createAccessPassPayload(dni)}
           size={180}
           level="H"
           includeMargin={false}

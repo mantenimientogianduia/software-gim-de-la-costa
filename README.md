@@ -1,20 +1,38 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Gym de la Costa ERP
 
-# Run and deploy your AI Studio app
+ERP web para gimnasio construido con Next.js, React y Firebase. Incluye paneles para administracion, profesores y socios, con gestion de usuarios, pagos, rutinas, clases y control de acceso por QR.
 
-This contains everything you need to run your app locally.
+## Requisitos
 
-View your app in AI Studio: https://ai.studio/apps/8c9c7e76-ae15-448a-9986-d0f0e1f18872
+- Node.js
+- Un proyecto Firebase con Authentication y Firestore habilitados
 
-## Run Locally
+## Configuracion
 
-**Prerequisites:**  Node.js
+La app lee la configuracion Firebase desde `NEXT_PUBLIC_FIREBASE_CONFIG` si existe. Si no, usa `firebase-applet-config.json`.
 
+Ejemplo de `.env.local`:
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+NEXT_PUBLIC_FIREBASE_CONFIG='{"projectId":"...","appId":"...","apiKey":"...","authDomain":"...","storageBucket":"...","messagingSenderId":"..."}'
+```
+
+## Comandos
+
+```bash
+npm ci
+npm run dev
+npm test
+npm run lint
+npm run build
+```
+
+## Firestore
+
+Las reglas principales estan en `firestore.rules`. Antes de publicar cambios, correr:
+
+```bash
+npm test
+npm run lint
+npm run build
+```

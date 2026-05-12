@@ -1,6 +1,6 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { useState, useRef } from 'react';
+import { parseAccessIdentifier } from '@/lib/access-pass';
 import { attendanceService } from '@/services/attendance.service';
 import { userService } from '@/services/user.service';
 
@@ -9,7 +9,8 @@ export default function QRScanner() {
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleAccess = async (identifier: string) => {
+  const handleAccess = async (rawIdentifier: string) => {
+    const identifier = parseAccessIdentifier(rawIdentifier);
     if (!identifier || status === 'processing') return;
     
     setStatus('processing');

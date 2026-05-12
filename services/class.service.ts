@@ -41,6 +41,10 @@ export class ClassService {
   private classesRef = collection(db, 'classes');
   private bookingsRef = collection(db, 'bookings');
 
+  private getBookingId(classId: string, userId: string): string {
+    return `${classId}_${userId.toLowerCase().replace(/[^a-z0-9_-]/g, '_')}`;
+  }
+
   async createClass(data: Omit<GymClass, 'id' | 'enrolledCount' | 'createdAt'>): Promise<string> {
     const newDoc = doc(this.classesRef);
     await setDoc(newDoc, {
@@ -92,11 +96,16 @@ export class ClassService {
 
   async bookClass(classId: string, userId: string): Promise<void> {
     const classRef = doc(this.classesRef, classId);
-    const bookingRef = doc(this.bookingsRef);
+    const bookingRef = doc(this.bookingsRef, this.getBookingId(classId, userId));
 
     await runTransaction(db, async (transaction) => {
       const classDoc = await transaction.get(classRef);
       if (!classDoc.exists()) throw new Error('Clase no encontrada');
+
+      const bookingDoc = await transaction.get(bookingRef);
+      if (bookingDoc.exists() && (bookingDoc.data() as Booking).status === 'confirmed') {
+        throw new Error('Ya estas anotado en esta clase');
+      }
       
       const classData = classDoc.data() as GymClass;
       if (classData.enrolledCount >= classData.capacity) {
@@ -127,6 +136,10 @@ export class ClassService {
     const classRef = doc(this.classesRef, classId);
 
     await runTransaction(db, async (transaction) => {
+      const bookingDoc = await transaction.get(bookingRef);
+      if (!bookingDoc.exists()) throw new Error('Reserva no encontrada');
+      if ((bookingDoc.data() as Booking).status !== 'confirmed') return;
+
       transaction.update(bookingRef, { status: 'cancelled' });
       transaction.update(classRef, { enrolledCount: increment(-1) });
     });

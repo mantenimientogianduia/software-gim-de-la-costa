@@ -182,6 +182,9 @@
       "description": "The real recorded data from training days"
     },
     "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and membership state"
+    },
     "/classes/{classId}": {
       "schema": "Class",
       "description": "Available gym classes"

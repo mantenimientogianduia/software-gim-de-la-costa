@@ -9,8 +9,7 @@ service cloud.firestore {
     }
 
     // 3. Global Helpers
-    function isSignedIn() { return request.auth != null; }
-    function isEmailVerified() { return request.auth.token.email_verified == true; }
+    function isSignedIn() { return request.auth != null && request.auth.token.email_verified == true; }
     function isAdmin() { 
       return isSignedIn() && (
         request.auth.token.email == 'gino.pieretti00@gmail.com' || 
@@ -47,14 +46,18 @@ service cloud.firestore {
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
       allow list: if isAdmin(); 
 
-      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && 
-                    incoming().email == request.auth.token.email &&
-                    (incoming().email == 'gino.pieretti00@gmail.com' ? 
-                      (incoming().role == 'admin' && incoming().status == 'active') : 
-                      (incoming().role == 'socio' && incoming().status == 'pending'));
+      allow create: if (
+        isAdmin() && isValidUser(incoming())
+      ) || (
+        isSignedIn() && isOwner(userId) && isValidUser(incoming()) &&
+        incoming().email == request.auth.token.email &&
+        (incoming().email == 'gino.pieretti00@gmail.com' ?
+          (incoming().role == 'admin' && incoming().status == 'active') :
+          (incoming().role == 'socio' && incoming().status == 'pending'))
+      );
 
       allow update: if isSignedIn() && (
-        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'currentActivity', 'updatedAt']) && isValidUser(incoming())) ||
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'atGym', 'currentActivity', 'updatedAt']) && isValidUser(incoming())) ||
         (isAdmin() && isValidUser(incoming())) ||
         (isProfesor() && incoming().diff(existing()).affectedKeys().hasOnly(['atGym', 'currentActivity', 'lastCheckIn', 'updatedAt']) && isValidUser(incoming()))
       );
@@ -115,8 +118,22 @@ service cloud.firestore {
         return data.title is string && data.capacity is int && data.capacity > 0;
       }
 
+      function isCounterOnlyUpdate() {
+        return isSignedIn() &&
+               incoming().diff(existing()).affectedKeys().hasOnly(['enrolledCount']) &&
+               incoming().enrolledCount is int &&
+               incoming().enrolledCount >= 0 &&
+               incoming().enrolledCount <= existing().capacity &&
+               (
+                 incoming().enrolledCount == existing().enrolledCount + 1 ||
+                 incoming().enrolledCount == existing().enrolledCount - 1
+               );
+      }
+
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isProfesor();
+      allow create: if (isAdmin() || isProfesor()) && isValidClass(incoming());
+      allow update: if ((isAdmin() || isProfesor()) && isValidClass(incoming())) || isCounterOnlyUpdate();
+      allow delete: if isAdmin();
     }
 
     // --- Bookings Collection ---
@@ -125,6 +142,26 @@ service cloud.firestore {
       allow create: if isSignedIn() && incoming().userId == request.auth.token.email &&
                     existsAfter(/databases/$(database)/documents/classes/$(incoming().classId)); 
       allow update, delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.token.email);
+    }
+
+    // --- Payments Collection ---
+    match /payments/{paymentId} {
+      function isValidPayment(data) {
+        return data.userId is string &&
+               data.userName is string &&
+               data.amount is number &&
+               data.amount >= 0 &&
+               data.concept is string &&
+               data.monthsPaid is int &&
+               data.monthsPaid > 0 &&
+               data.status in ['confirmed', 'pending', 'cancelled'];
+      }
+
+      allow read: if isSignedIn() && (
+        isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email
+      );
+      allow create: if isAdmin() && isValidPayment(incoming());
+      allow update, delete: if isAdmin() && isValidPayment(incoming());
     }
 
     // --- Attendance Collection ---
@@ -136,7 +173,13 @@ service cloud.firestore {
       }
       allow read: if isSignedIn() && (isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email);
       allow create: if isAdmin() || isProfesor();
-      allow update: if (isAdmin() || isProfesor()) && isValidAttendance(incoming());
+      allow update: if ((isAdmin() || isProfesor()) && isValidAttendance(incoming())) ||
+                    (
+                      isSignedIn() &&
+                      existing().userId == request.auth.token.email &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['status', 'checkOutAt']) &&
+                      incoming().status == 'completed'
+                    );
     }
   }
 }
