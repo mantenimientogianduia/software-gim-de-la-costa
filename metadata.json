@@ -1,8 +1,7 @@
 {
-  "name": "Gym De La Costa",
-  "description": "Sistema de gestión integral para el Gym De La Costa, incluyendo socios, pagos, rutinas y reserva de clases.",
+  "name": "Gimnasio de la Costa",
+  "description": "Sistema de gestión integral para gimnasios: socios, rutinas, clases y finanzas.",
   "requestFramePermissions": [
     "camera"
-  ],
-  "majorCapabilities": []
+  ]
 }

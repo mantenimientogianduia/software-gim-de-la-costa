@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { routineService, Exercise } from '@/services/routine.service';
 import { userService } from '@/services/user.service';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth, AuthProvider } from '@/hooks/use-auth';
 
 const COMMON_EXERCISES: Exercise[] = [
   { name: 'Sentadilla con Barra', prescribed: { sets: 3, reps: '8-10', load: 'RPE 8' }, notes: 'Foco en profundidad y control' },
@@ -17,15 +17,15 @@ const COMMON_EXERCISES: Exercise[] = [
   { name: 'Plancha Abdominal', prescribed: { sets: 3, reps: '45 seg', load: 'N/A' }, notes: 'Mantener core activo' },
 ];
 
-export default function SeedPage() {
-  const { user } = useAuth();
+function SeedContent() {
+  const { profile } = useAuth();
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [log, setLog] = useState<string[]>([]);
 
   const addLog = (msg: string) => setLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
 
   const runSeed = async () => {
-    if (!user) return;
+    if (!profile) return;
     setStatus('loading');
     setLog([]);
     try {
@@ -35,64 +35,31 @@ export default function SeedPage() {
         addLog(`Añadido: ${ex.name}`);
       }
 
-      addLog('Creando Rutina Completa 1: Empuje/Tirón/Pierna (Template)...');
+      addLog('Creando Rutina Template: Fundamentos...');
       const plan1Id = await routineService.createPlan({
-        title: 'Fundamentos de Fuerza - PPL',
-        description: 'Plan de 3 días para iniciación en hipertrofia y fuerza básica.',
+        title: 'Fundamentos de Fuerza',
+        description: 'Plan de 3 días para iniciación.',
         type: 'template',
-        instructorId: user.email!,
+        instructorId: profile.email!,
         status: 'active',
         weeksCount: 4,
         level: 'beginner',
-        tags: ['Fuerza', 'Básico']
+        tags: ['Fuerza']
       });
 
-      // Simple 1 week pattern for template
       await routineService.saveWeek({
         planId: plan1Id,
         order: 1,
         type: 'base',
-        goal: 'Adaptación anatómica',
+        goal: 'Adaptación',
         days: [
           {
             order: 1,
-            name: 'Día 1: Empuje',
+            name: 'Día A',
             blocks: [
               {
                 type: 'main',
-                exercises: [
-                  COMMON_EXERCISES[1], // Press banca
-                  COMMON_EXERCISES[3], // Press militar
-                  COMMON_EXERCISES[8], // Triceps
-                ]
-              }
-            ]
-          },
-          {
-            order: 2,
-            name: 'Día 2: Tirón',
-            blocks: [
-              {
-                type: 'main',
-                exercises: [
-                  COMMON_EXERCISES[4], // Dominadas
-                  COMMON_EXERCISES[5], // Remo
-                  COMMON_EXERCISES[7], // Biceps
-                ]
-              }
-            ]
-          },
-          {
-            order: 3,
-            name: 'Día 3: Pierna',
-            blocks: [
-              {
-                type: 'main',
-                exercises: [
-                  COMMON_EXERCISES[0], // Sentadilla
-                  COMMON_EXERCISES[2], // PMR
-                  COMMON_EXERCISES[6], // Zancadas
-                ]
+                exercises: [COMMON_EXERCISES[0], COMMON_EXERCISES[1], COMMON_EXERCISES[5]]
               }
             ]
           }
@@ -100,137 +67,50 @@ export default function SeedPage() {
       });
       addLog('Rutina 1 creada.');
 
-      addLog('Creando Rutina Completa 2: Torso/Pierna Avanzado (Template)...');
-      const plan2Id = await routineService.createPlan({
-        title: 'Especialización Estética - Torso/Pierna',
-        description: 'Alta frecuencia y volumen para niveles intermedios-avanzados.',
-        type: 'template',
-        instructorId: user.email!,
-        status: 'active',
-        weeksCount: 8,
-        level: 'advanced',
-        tags: ['Hipertrofia', 'Avanzado']
-      });
-
-      await routineService.saveWeek({
-        planId: plan2Id,
-        order: 1,
-        type: 'base',
-        goal: 'Volumen acumulativo',
-        days: [
-          {
-            order: 1,
-            name: 'Día 1: Torso (Fuerza)',
-            blocks: [
-              {
-                type: 'main',
-                exercises: [
-                  { ...COMMON_EXERCISES[1], prescribed: { sets: 5, reps: '5', load: '85%' } },
-                  { ...COMMON_EXERCISES[5], prescribed: { sets: 4, reps: '8', load: 'RPE 8' } },
-                ]
-              }
-            ]
-          },
-          {
-            order: 2,
-            name: 'Día 2: Pierna (Fuerza)',
-            blocks: [
-              {
-                type: 'main',
-                exercises: [
-                  { ...COMMON_EXERCISES[0], prescribed: { sets: 5, reps: '5', load: '85%' } },
-                  { ...COMMON_EXERCISES[2], prescribed: { sets: 4, reps: '8', load: 'RPE 8' } },
-                ]
-              }
-            ]
-          }
-        ]
-      });
-      addLog('Rutina 2 creada.');
-
-      addLog('Creando Rutina Completa 3: Cardio & Core (Template)...');
-      const plan3Id = await routineService.createPlan({
-        title: 'Acondicionamiento Metabólico',
-        description: 'Sesiones de alta intensidad para quema calórica y salud cardiovascular.',
-        type: 'template',
-        instructorId: user.email!,
-        status: 'active',
-        weeksCount: 4,
-        level: 'intermediate',
-        tags: ['Cardio', 'Core']
-      });
-
-      await routineService.saveWeek({
-        planId: plan3Id,
-        order: 1,
-        type: 'base',
-        goal: 'Capacidad aeróbica',
-        days: [
-          {
-            order: 1,
-            name: 'Día 1: HIIT',
-            blocks: [
-              {
-                type: 'main',
-                exercises: [
-                  { ...COMMON_EXERCISES[9], prescribed: { sets: 4, reps: '1 min', load: 'N/A' } },
-                  { name: 'Burpees', prescribed: { sets: 4, reps: '15', load: 'N/A' } },
-                ]
-              }
-            ]
-          }
-        ]
-      });
-      addLog('Rutina 3 creada.');
-
-      addLog('Creando SOCIOS DE PRUEBA (Mocks)...');
-      const mockSocios = [
-        { id: 'mock_socio_1', email: 'juan.perez@ficticio.com', firstName: 'Juan', lastName: 'Pérez', dni: '11223344' },
-        { id: 'mock_socio_2', email: 'maria.garcia@ficticio.com', firstName: 'María', lastName: 'García', dni: '22334455' },
-        { id: 'mock_socio_3', email: 'carlos.rodriguez@ficticio.com', firstName: 'Carlos', lastName: 'Rodríguez', dni: '33445566' },
-        { id: 'mock_socio_4', email: 'ana.martinez@ficticio.com', firstName: 'Ana', lastName: 'Martínez', dni: '44556677' },
+      addLog('Creando SOCIOS DE PRUEBA...');
+      const mockUsers = [
+        { email: 'test.socio@gym.com', name: 'Test', last: 'Socio', dni: '99887766' },
       ];
 
-      for (const socio of mockSocios) {
-        await userService.createUserProfile(socio.id, socio.email, socio.firstName, socio.lastName, 'socio', socio.dni);
-        // Force status to active for testing
-        await userService.updateUserStatus(socio.id, 'active');
-        addLog(`Socio creado: ${socio.firstName} ${socio.lastName} (${socio.email})`);
+      for (const m of mockUsers) {
+        // En una app real crearíamos el auth primero, pero aquí sólo queremos perfiles para ver UI
+        await userService.createUserProfile(m.email, m.email, m.name, m.last, 'socio', m.dni);
+        addLog(`Perfil creado: ${m.email}`);
       }
 
       setStatus('success');
-      addLog('PROCESO FINALIZADO CON ÉXITO');
-    } catch (err) {
+      addLog('TODO LISTO');
+    } catch (err: any) {
       console.error(err);
       setStatus('error');
-      addLog(`ERROR: ${err instanceof Error ? err.message : 'Desconocido'}`);
+      addLog(`ERROR: ${err.message}`);
     }
   };
 
-  if (user?.email !== 'gino.pieretti00@gmail.com') return <div>Acceso denegado</div>;
-
   return (
-    <div className="p-20 bg-surface min-h-screen text-white font-mono">
-      <h1 className="text-4xl font-black mb-8 italic">SEED DATA SYSTEM</h1>
+    <div className="p-20 bg-black min-h-screen text-white font-mono">
+      <h1 className="text-4xl font-black mb-8 italic text-primary">ELITE SEED SYSTEM</h1>
       <button 
         onClick={runSeed}
         disabled={status === 'loading'}
-        className="px-8 py-4 bg-primary rounded-xl font-bold uppercase tracking-widest disabled:opacity-50"
+        className="px-8 py-4 bg-primary rounded-xl font-bold uppercase tracking-widest disabled:opacity-50 shadow-glow"
       >
-        {status === 'loading' ? 'Ejecutando...' : 'Iniciar Carga de Datos'}
+        {status === 'loading' ? 'EJECUTANDO...' : 'INICIA CARGA'}
       </button>
 
-      <div className="mt-12 space-y-2 bg-black/40 p-8 rounded-2xl border border-white/10 max-h-[400px] overflow-y-auto">
+      <div className="mt-12 space-y-2 bg-white/5 p-8 rounded-2xl border border-white/10 max-h-[400px] overflow-y-auto">
         {log.map((line, i) => (
-          <p key={i} className={line.includes('ERROR') ? 'text-error' : 'text-primary'}>{line}</p>
+          <p key={i} className={line.includes('ERROR') ? 'text-red-500' : 'text-gray-400'}>{line}</p>
         ))}
       </div>
-      
-      {status === 'success' && (
-        <div className="mt-8 p-4 bg-green-500/20 text-green-400 rounded-xl border border-green-500/30">
-          Datos cargados correctamente. Ya puedes volver al dashboard.
-        </div>
-      )}
     </div>
+  );
+}
+
+export default function SeedPage() {
+  return (
+    <AuthProvider>
+      <SeedContent />
+    </AuthProvider>
   );
 }
