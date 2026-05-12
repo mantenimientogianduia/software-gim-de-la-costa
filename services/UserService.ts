@@ -1,41 +1,67 @@
-import { z } from 'zod';
-
-export const UserProfileSchema = z.object({
-  id: z.string(),
-  name: z.string().min(2),
-  avatarUrl: z.string().url(),
-  isProfileVisible: z.boolean(),
-  isInGym: z.boolean(),
-});
-
-export type UserProfile = z.infer<typeof UserProfileSchema>;
-
-export interface UserService {
-  updateProfileVisibility(userId: string, isVisible: boolean): Promise<void>;
-  isProfileVisible(userId: string): Promise<boolean>;
-  getUsersInGym(): Promise<UserProfile[]>;
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl: string;
+  isProfileVisible: boolean;
+  plan: 'Basic' | 'Pro' | 'Elite';
+  status: 'Active' | 'Inactive' | 'Pending';
+  lastActivity?: string;
 }
 
-export class UserServiceImpl implements UserService {
-  private users: Map<string, UserProfile> = new Map([
-    ['user-1', { id: 'user-1', name: 'Alex Gym', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex', isProfileVisible: true, isInGym: true }],
-    ['user-2', { id: 'user-2', name: 'Maria Fit', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maria', isProfileVisible: true, isInGym: true }],
-    ['user-3', { id: 'user-3', name: 'John Doe', avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John', isProfileVisible: false, isInGym: true }],
-  ]);
+export class UserService {
+  private users: User[] = [
+    {
+      id: '1',
+      name: 'Alex Rivera',
+      email: 'alex@example.com',
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
+      isProfileVisible: true,
+      plan: 'Elite',
+      status: 'Active',
+      lastActivity: 'CARDIO ROOM'
+    },
+    {
+      id: '2',
+      name: 'Elena Silva',
+      email: 'elena@example.com',
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Elena',
+      isProfileVisible: true,
+      plan: 'Pro',
+      status: 'Active',
+      lastActivity: 'STRENGTH AREA'
+    },
+    {
+      id: '3',
+      name: 'Marcus Bell',
+      email: 'marcus@example.com',
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marcus',
+      isProfileVisible: false,
+      plan: 'Basic',
+      status: 'Inactive',
+      lastActivity: 'RECOVERY ZONE'
+    }
+  ];
 
-  async updateProfileVisibility(userId: string, isVisible: boolean): Promise<void> {
-    const user = this.users.get(userId);
-    if (user) {
-      this.users.set(userId, { ...user, isProfileVisible: isVisible });
+  async getUsers(): Promise<User[]> {
+    return [...this.users];
+  }
+
+  async toggleVisibility(userId: string, currentStatus: boolean): Promise<void> {
+    const index = this.users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      this.users[index].isProfileVisible = !currentStatus;
     }
   }
 
-  async isProfileVisible(userId: string): Promise<boolean> {
-    const user = this.users.get(userId);
-    return user ? user.isProfileVisible : true;
+  async deleteUser(userId: string): Promise<void> {
+    this.users = this.users.filter(u => u.id !== userId);
   }
 
-  async getUsersInGym(): Promise<UserProfile[]> {
-    return Array.from(this.users.values()).filter(u => u.isInGym && u.isProfileVisible);
+  async updateUserPlan(userId: string, plan: User['plan']): Promise<void> {
+    const index = this.users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      this.users[index].plan = plan;
+    }
   }
 }

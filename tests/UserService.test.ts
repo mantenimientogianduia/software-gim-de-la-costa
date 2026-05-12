@@ -1,26 +1,37 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { UserServiceImpl } from '../services/UserService';
+import { UserService } from '../services/UserService';
 
 describe('UserService', () => {
-  let userService: UserServiceImpl;
+  let userService: UserService;
 
   beforeEach(() => {
-    userService = new UserServiceImpl();
+    userService = new UserService();
+  });
+
+  it('should list all users', async () => {
+    const users = await userService.getUsers();
+    expect(users.length).toBeGreaterThan(0);
   });
 
   it('should toggle user profile visibility', async () => {
-    const user = { id: 'user-123', name: 'Test User', avatarUrl: '', isProfileVisible: true, isInGym: true };
-    // We can't easily inject into the private map without a proper setter or by using an existing user
-    const existingUserId = 'user-1'; 
+    const users = await userService.getUsers();
+    const userId = users[0].id;
+    const initialVisibility = users[0].isProfileVisible;
     
-    await userService.updateProfileVisibility(existingUserId, false);
-    const updatedVisibility = await userService.isProfileVisible(existingUserId);
-    expect(updatedVisibility).toBe(false);
+    await userService.toggleVisibility(userId, initialVisibility);
+    const updatedUsers = await userService.getUsers();
+    const updatedUser = updatedUsers.find(u => u.id === userId);
+    
+    expect(updatedUser?.isProfileVisible).toBe(!initialVisibility);
   });
 
-  it('should list users currently in the gym who have visible profiles', async () => {
-    // Mock simulation
-    const usersInGym = await userService.getUsersInGym();
-    expect(Array.isArray(usersInGym)).toBe(true);
+  it('should delete a user (Admin feature)', async () => {
+    const users = await userService.getUsers();
+    const userIdToDelete = users[0].id;
+    
+    await userService.deleteUser(userIdToDelete);
+    const updatedUsers = await userService.getUsers();
+    
+    expect(updatedUsers.find(u => u.id === userIdToDelete)).toBeUndefined();
   });
 });

@@ -1,138 +1,114 @@
-'use client';
+'use client'
 
 import React from 'react';
-import { motion } from 'motion/react';
 import { 
-  TrendingUp, 
-  Flame, 
-  Calendar, 
-  Clock,
-  ArrowUpRight,
-  Dumbbell,
-  ChevronRight
+  Trophy, 
+  Users, 
+  Timer, 
+  Grid,
+  ChevronRight,
+  TrendingUp,
+  Zap
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui/Base';
-import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
-export const Overview = () => {
+export function Overview() {
   return (
-    <div className="space-y-8">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'Entrenamientos', value: '18', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50', trend: '+3 este mes' },
-          { label: 'Tiempo Total', value: '24.5h', icon: Clock, color: 'text-blue-500', bg: 'bg-blue-50', trend: 'Promedio 1.2h/sesión' },
-          { label: 'Racha Actual', value: '5 días', icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-50', trend: 'Racha récord: 12' },
-          { label: 'Próxima Clase', value: 'Yoga Flow', icon: Calendar, color: 'text-purple-500', bg: 'bg-purple-50', trend: 'Hoy, 18:00' },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <Card className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className={cn("p-3 rounded-2xl", stat.bg)}>
-                  <stat.icon className={cn("w-6 h-6", stat.color)} />
-                </div>
-                <ArrowUpRight className="w-5 h-5 text-zinc-300" />
+    <div className="space-y-12 pb-20">
+      {/* Hero Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <Card className="lg:col-span-2 p-10 border-zinc-900 relative group overflow-hidden">
+           <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+              <TrendingUp className="w-32 h-32 text-brand-orange -rotate-12" />
+           </div>
+           <div className="relative z-10">
+              <h3 className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-4">Estado del Servidor</h3>
+              <p className="text-4xl font-display font-bold text-white mb-6">Pico de <span className="text-brand-orange">Flujo</span></p>
+              <div className="flex items-center gap-6">
+                 <div>
+                    <p className="text-2xl font-bold text-white">86</p>
+                    <p className="text-[10px] text-zinc-600 uppercase font-bold">Socios In</p>
+                 </div>
+                 <div className="w-px h-10 bg-zinc-900" />
+                 <div>
+                    <p className="text-2xl font-bold text-brand-orange">12</p>
+                    <p className="text-[10px] text-zinc-600 uppercase font-bold">New PRs</p>
+                 </div>
               </div>
-              <div>
-                <p className="text-zinc-500 text-xs font-bold uppercase tracking-wider mb-1">{stat.label}</p>
-                <p className="text-2xl font-display font-bold leading-none">{stat.value}</p>
-                <p className="mt-3 text-[10px] font-medium text-zinc-400">{stat.trend}</p>
-              </div>
-            </Card>
-          </motion.div>
-        ))}
+           </div>
+        </Card>
+
+        <Card className="p-10 border-zinc-900 flex flex-col justify-between">
+           <Zap className="w-8 h-8 text-brand-orange mb-8" />
+           <div>
+              <p className="text-4xl font-bold text-white mb-2">Elite</p>
+              <p className="text-[10px] text-zinc-600 uppercase font-bold tracking-widest">Tu Status de Plan</p>
+           </div>
+        </Card>
+
+        <Card className="p-10 bg-brand-orange border-none flex flex-col justify-between text-white">
+           <div className="p-2 bg-black/20 w-fit rounded-lg mb-8">
+              <Trophy className="w-6 h-6" />
+           </div>
+           <div>
+              <p className="text-4xl font-bold mb-2">#14</p>
+              <p className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Ranking Mensual</p>
+           </div>
+        </Card>
       </div>
 
-      {/* Charts / Activity Placeholder */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="font-display font-bold text-xl">Actividad Semanal</h3>
-            <div className="flex gap-2">
-               <div className="flex items-center gap-2 text-xs font-medium text-zinc-400">
-                  <div className="w-2 h-2 bg-black rounded-full" />
-                  Actual
-               </div>
-               <div className="flex items-center gap-2 text-xs font-medium text-zinc-400">
-                  <div className="w-2 h-2 bg-zinc-200 rounded-full" />
-                  Anterior
-               </div>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+             <h3 className="text-xl font-display font-bold uppercase tracking-widest">Próximas Sesiones</h3>
+             <Button variant="ghost" size="sm">Ver Calendario</Button>
           </div>
-          
-          <div className="h-64 mt-4 flex items-end justify-between gap-4">
+          <div className="space-y-4">
              {[
-               { d: 'Lun', v1: 60, v2: 40 },
-               { d: 'Mar', v1: 85, v2: 55 },
-               { d: 'Mié', v1: 45, v2: 70 },
-               { d: 'Jue', v1: 100, v2: 60 },
-               { d: 'Vie', v1: 75, v2: 45 },
-               { d: 'Sáb', v1: 30, v2: 80 },
-               { d: 'Dom', v1: 20, v2: 30 },
-             ].map((item, i) => (
-               <div key={item.d} className="flex-1 flex flex-col items-center gap-3">
-                  <div className="relative w-full h-full min-h-[150px] flex items-end justify-center gap-1">
-                     <motion.div 
-                       initial={{ height: 0 }}
-                       animate={{ height: `${item.v2}%` }}
-                       className="w-2 bg-zinc-100 rounded-t-full transition-all duration-1000"
-                     />
-                     <motion.div 
-                       initial={{ height: 0 }}
-                       animate={{ height: `${item.v1}%` }}
-                       className="w-2.5 bg-black rounded-t-full transition-all duration-1000 delay-300"
-                     />
-                  </div>
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase">{item.d}</span>
-               </div>
+               { name: 'HIIT Explosive', time: '18:30', instructor: 'Coach Marco', intensity: 'High' },
+               { name: 'Powerlifting Base', time: '19:45', instructor: 'Coach Elena', intensity: 'Medium' }
+             ].map((session, i) => (
+                <div key={i} className="flex items-center justify-between p-6 rounded-[28px] bg-zinc-900/30 border border-zinc-900 hover:border-zinc-800 transition-all cursor-pointer group">
+                   <div className="flex items-center gap-6">
+                      <div className="text-center w-12">
+                         <p className="text-sm font-bold text-white">{session.time}</p>
+                         <p className="text-[8px] text-zinc-600 uppercase font-bold">PM</p>
+                      </div>
+                      <div>
+                         <p className="font-bold text-zinc-200">{session.name}</p>
+                         <p className="text-[10px] text-zinc-500">{session.instructor}</p>
+                      </div>
+                   </div>
+                   <ChevronRight className="w-5 h-5 text-zinc-800 group-hover:text-brand-orange transition-colors" />
+                </div>
              ))}
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-8 bg-black text-white border-none shadow-2xl">
-          <h3 className="font-display font-bold text-xl mb-6">Misión del Día</h3>
-          <div className="space-y-6">
-            <div className="p-4 bg-zinc-900 rounded-2xl border border-zinc-800">
-               <p className="text-zinc-500 text-[10px] font-bold uppercase mb-2">Objetivo Calorías</p>
-               <p className="text-2xl font-display font-bold mb-3">640 <span className="text-sm font-light text-zinc-500">/ 800 kcal</span></p>
-               <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                 <motion.div 
-                   initial={{ width: 0 }}
-                   animate={{ width: '80%' }}
-                   className="h-full bg-white rounded-full"
-                 />
-               </div>
-            </div>
-
-            <div className="space-y-4">
-               <p className="text-[10px] font-bold uppercase text-zinc-500 tracking-wider">Hoy toca</p>
-               <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-zinc-900 flex items-center justify-center">
-                    <Dumbbell className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm">Hipertrofia - Pecho</p>
-                    <p className="text-xs text-zinc-500 font-medium">16:30 - Zona Pesas</p>
-                  </div>
-                  <Button variant="secondary" size="icon" className="ml-auto w-8 h-8 rounded-full">
-                    <ChevronRight className="w-4 h-5" />
-                  </Button>
-               </div>
-            </div>
-            
-            <div className="pt-6">
-               <Button className="w-full bg-white text-black hover:bg-zinc-100 py-6 text-base shadow-lg shadow-white/5">
-                 Empezar Sesión
-               </Button>
-            </div>
-          </div>
-        </Card>
+        <div className="space-y-8">
+           <h3 className="text-xl font-display font-bold uppercase tracking-widest">Logros de Comunidad</h3>
+           <Card className="p-8 border-zinc-900 bg-zinc-950/80">
+              <div className="flex items-center gap-6 mb-8 pb-8 border-b border-zinc-900/50">
+                 <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center">
+                    <Trophy className="w-8 h-8 text-yellow-500" />
+                 </div>
+                 <div>
+                    <h4 className="font-bold text-zinc-100 italic">"The Power Couple"</h4>
+                    <p className="text-xs text-zinc-500">Desbloqueado por entrenar juntos 5 veces esta semana.</p>
+                 </div>
+              </div>
+              <div className="flex -space-x-4">
+                 {[1,2,3,4].map(id => (
+                    <div key={id} className="w-10 h-10 rounded-full border-4 border-black bg-zinc-800 overflow-hidden ring-1 ring-zinc-800">
+                       <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${id}`} alt="user" />
+                    </div>
+                 ))}
+                 <div className="w-10 h-10 rounded-full border-4 border-black bg-zinc-900 flex items-center justify-center text-[10px] font-bold text-zinc-500">+12</div>
+              </div>
+           </Card>
+        </div>
       </div>
     </div>
   );
-};
+}

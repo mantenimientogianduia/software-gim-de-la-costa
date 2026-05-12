@@ -1,39 +1,32 @@
-'use client';
+import { useState, useEffect } from 'react';
+import { UserService, User } from '@/services/UserService';
 
-import { useState, useEffect, useMemo } from 'react';
-import { UserServiceImpl, UserProfile } from '@/services/UserService';
-import { TimerServiceImpl, TimerPreset } from '@/services/TimerService';
+const userService = new UserService();
 
 export function useGym() {
-  const userService = useMemo(() => new UserServiceImpl(), []);
-  const timerService = useMemo(() => new TimerServiceImpl(), []);
-
-  const [usersInGym, setUsersInGym] = useState<UserProfile[]>([]);
-  const [presets, setPresets] = useState<TimerPreset[]>([]);
+  const [usersInGym, setUsersInGym] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchUsers = async () => {
+    const allUsers = await userService.getUsers();
+    // In a real app we'd filter by who is actually "in" the gym
+    // For now, let's show all visible users as "in the gym" for the community feel
+    setUsersInGym(allUsers.filter(u => u.isProfileVisible));
+    setLoading(false);
+  };
+
   useEffect(() => {
-    async function init() {
-      const users = await userService.getUsersInGym();
-      const p = timerService.getPresets();
-      setUsersInGym(users);
-      setPresets(p);
-      setLoading(false);
-    }
-    init();
-  }, [userService, timerService]);
+    fetchUsers();
+  }, []);
 
   const toggleVisibility = async (userId: string, current: boolean) => {
-    await userService.updateProfileVisibility(userId, !current);
-    const updated = await userService.getUsersInGym();
-    setUsersInGym(updated);
+    await userService.toggleVisibility(userId, current);
+    await fetchUsers();
   };
 
   return {
     usersInGym,
-    presets,
     loading,
-    toggleVisibility,
-    timerService
+    toggleVisibility
   };
 }

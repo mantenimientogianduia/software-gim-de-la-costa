@@ -1,20 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-orange: #FF5C00;
+  --brand-orange-hover: #E65200;
 }
 
-@theme {
-  --color-primary: #000000;
-  --color-secondary: #f3f4f6;
-  --color-accent: #3b82f6;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
+body {
+  @apply bg-black text-white antialiased selection:bg-brand-orange/30;
 }
 
-@layer base {
-  body {
-    @apply bg-white text-gray-900 antialiased font-sans;
-  }
+.font-display {
+  font-family: var(--font-sans);
+}
+
+.glass-card {
+  @apply bg-zinc-950/50 border border-zinc-900 backdrop-blur-xl;
+}
+
+@keyframes pulse-orange {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.2; }
+}
+
+.animate-pulse-orange {
+  animation: pulse-orange 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

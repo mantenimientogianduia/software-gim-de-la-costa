@@ -1,8 +1,5 @@
 {
-  "name": "GymFlow Pro",
-  "description": "Una aplicación premium para socios de gimnasio con herramientas de entrenamiento, seguimiento de progreso y comunidad en tiempo real.",
-  "requestFramePermissions": [
-    "camera",
-    "geolocation"
-  ]
+  "name": "Gym Flow Pro",
+  "description": "Elite gym management and member community platform with real-time access control and pro training tools.",
+  "requestFramePermissions": []
 }

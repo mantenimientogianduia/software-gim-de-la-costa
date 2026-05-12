@@ -1,57 +1,75 @@
-'use client';
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
-import * as React from 'react';
-import { motion, HTMLMotionProps } from 'motion/react';
-import { cn } from '@/lib/utils';
+export const Button = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'outline' | 'ghost', size?: 'sm' | 'md' | 'lg' | 'icon' }
+>(({ className, variant = 'primary', size = 'md', ...props }, ref) => {
+  const variants = {
+    primary: "bg-brand-orange text-white hover:bg-brand-orange-hover shadow-[0_0_20px_rgba(255,92,0,0.2)]",
+    secondary: "bg-zinc-800 text-zinc-100 hover:bg-zinc-700",
+    outline: "border border-zinc-800 text-zinc-300 hover:border-brand-orange hover:text-brand-orange bg-transparent",
+    ghost: "bg-transparent text-zinc-400 hover:text-white"
+  };
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg' | 'icon';
-  isLoading?: boolean;
-}
+  const sizes = {
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-6 py-2.5 text-sm",
+    lg: "px-10 py-4 text-base font-bold",
+    icon: "p-2"
+  };
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', isLoading, children, ...props }, ref) => {
-    const variants = {
-      primary: 'bg-black text-white hover:bg-zinc-800 shadow-sm',
-      secondary: 'bg-white text-black border border-zinc-200 hover:bg-zinc-50 shadow-sm',
-      outline: 'bg-transparent border border-zinc-300 hover:bg-zinc-100',
-      ghost: 'bg-transparent hover:bg-zinc-100 text-zinc-600 hover:text-black',
-      danger: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
-    };
+  return (
+    <button
+      ref={ref}
+      className={cn(
+        "inline-flex items-center justify-center rounded-full font-medium transition-all focus:outline-none active:scale-95 disabled:opacity-50 disabled:pointer-events-none",
+        variants[variant],
+        sizes[size],
+        className
+      )}
+      {...props}
+    />
+  );
+});
+Button.displayName = "Button";
 
-    const sizes = {
-      sm: 'px-3 py-1.5 text-xs rounded-lg',
-      md: 'px-5 py-2.5 text-sm rounded-xl',
-      lg: 'px-8 py-3.5 text-base rounded-2xl',
-      icon: 'p-2 rounded-lg',
-    };
-
-    return (
-      <button
-        ref={ref}
-        className={cn(
-          'inline-flex items-center justify-center font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]',
-          variants[variant],
-          sizes[size],
-          className
-        )}
-        disabled={isLoading}
-        {...(props as any)}
-      >
-        {isLoading ? (
-          <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        ) : null}
-        {children}
-      </button>
-    );
-  }
-);
-
-Button.displayName = 'Button';
-
-export const Card = ({ className, children }: { className?: string; children: React.ReactNode }) => (
-  <div className={cn('bg-white border border-zinc-100 rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)]', className)}>
+export const Card = ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "rounded-[32px] bg-zinc-950/50 border border-zinc-900 backdrop-blur-xl overflow-hidden",
+      className
+    )}
+    {...props}
+  >
     {children}
   </div>
 );
+
+export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, ...props }, ref) => (
+    <input
+      ref={ref}
+      className={cn(
+        "w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl px-5 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-brand-orange/50 transition-all",
+        className
+      )}
+      {...props}
+    />
+  )
+);
+Input.displayName = "Input";
+
+export const Badge = ({ children, variant = 'default' }: { children: React.ReactNode, variant?: 'default' | 'success' | 'warning' | 'error' }) => {
+  const variants = {
+    default: "bg-zinc-800 text-zinc-400 border-zinc-700",
+    success: "bg-green-500/10 text-green-500 border-green-500/20",
+    warning: "bg-brand-orange/10 text-brand-orange border-brand-orange/20",
+    error: "bg-red-500/10 text-red-500 border-red-500/20"
+  };
+  return (
+    <span className={cn("px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border", variants[variant])}>
+      {children}
+    </span>
+  );
+};
