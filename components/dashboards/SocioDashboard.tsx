@@ -138,7 +138,11 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
                            </section>
 
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                              <StreakStats streak={profile.streak || { current: 0, best: 0, activityHistory: [] }} />
+                              <StreakStats streak={{
+                                current: profile.streak?.current || 0,
+                                best: profile.streak?.best || 0,
+                                activityHistory: profile.streak?.activityHistory || []
+                              }} />
                               <AchievementGallery unlockedList={profile.achievements || []} />
                            </div>
                        </div>

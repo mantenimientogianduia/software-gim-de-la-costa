@@ -1,6 +1,8 @@
 {
-  "name": "Gym De La Costa",
-  "description": "Sistema de gestión integral para el Gym De La Costa, incluyendo socios, pagos, rutinas y reserva de clases.",
-  "requestFramePermissions": [],
-  "majorCapabilities": []
+  "name": "GymFlow Pro",
+  "description": "Una aplicación premium para socios de gimnasio con herramientas de entrenamiento, seguimiento de progreso y comunidad en tiempo real.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
 }
