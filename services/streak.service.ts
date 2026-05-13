@@ -33,9 +33,9 @@ export class StreakService {
   /**
    * Calculates the streak data for a user
    * @param userId The user ID (email in this app)
-   * @param daysToLookBack Default 30 days
+   * @param daysToLookBack Default 90 days
    */
-  async getStreakData(userId: string, daysToLookBack: number = 30): Promise<StreakData> {
+  async getStreakData(userId: string, daysToLookBack: number = 90): Promise<StreakData> {
     const now = new Date();
     const startDate = new Date(now);
     startDate.setDate(now.getDate() - daysToLookBack);
