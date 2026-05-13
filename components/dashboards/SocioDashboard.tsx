@@ -6,9 +6,10 @@ import ClassBookingList from '@/components/classes/ClassBookingList';
 import QRGenerator from '@/components/access/QRGenerator';
 import SessionView from '@/components/routines/SessionView';
 import { TrainingToolbox } from '@/components/training/TrainingToolbox';
+import StreakDisplay from '@/components/training/StreakDisplay';
 
 export default function SocioDashboard({ profile }: { profile: UserProfile }) {
-  const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer' | 'streak'>('home');
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-24 md:pb-0 flex flex-col md:flex-row">
@@ -33,6 +34,13 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
         >
           <span className={`material-symbols-outlined ${activeTab === 'routine' ? 'icon-fill' : ''}`}>fitness_center</span>
           <span className="font-label text-[10px] uppercase font-bold mt-1">Rutina</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('streak')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded transition-all ${activeTab === 'streak' ? 'text-primary-container bg-surface-container-high' : 'text-tertiary hover:text-white'}`}
+        >
+          <span className={`material-symbols-outlined ${activeTab === 'streak' ? 'icon-fill' : ''}`}>local_fire_department</span>
+          <span className="font-label text-[10px] uppercase font-bold mt-1">Racha</span>
         </button>
         <button 
           onClick={() => setActiveTab('timer')}
@@ -68,6 +76,13 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
           >
             <span className={`material-symbols-outlined ${activeTab === 'routine' ? 'icon-fill' : ''}`}>fitness_center</span>
             <span className="font-label font-bold uppercase text-sm">Mi Rutina</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('streak')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'streak' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'streak' ? 'icon-fill' : ''}`}>local_fire_department</span>
+            <span className="font-label font-bold uppercase text-sm">Racha de Entrenamiento</span>
           </button>
           <button 
             onClick={() => setActiveTab('timer')}
@@ -143,6 +158,10 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
 
                      {activeTab === 'timer' && (
                        <TrainingToolbox />
+                     )}
+
+                     {activeTab === 'streak' && (
+                       <StreakDisplay userId={profile.email} />
                      )}
                  </div>
                  
