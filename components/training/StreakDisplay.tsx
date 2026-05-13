@@ -3,18 +3,39 @@ import { useStreak } from '@/hooks/useStreak';
 import { motion } from 'motion/react';
 
 export default function StreakDisplay({ userId }: { userId: string }) {
-  const { streakData, loading } = useStreak(userId);
+  const { streakData, loading, error } = useStreak(userId);
 
-  if (loading || !streakData) {
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="flex flex-col justify-center items-center h-64 gap-4">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <p className="font-label text-xs text-tertiary animate-pulse uppercase tracking-widest">Cargando tu racha...</p>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="bg-error-container text-on-error-container p-6 rounded-2xl ghost-border flex flex-col items-center gap-4 text-center">
+        <span className="material-symbols-outlined text-4xl">error</span>
+        <div>
+          <p className="font-headline font-bold">Error al cargar la racha</p>
+          <p className="font-body text-sm opacity-80">{error}</p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-on-error-container text-error-container px-6 py-2 rounded-full font-label text-xs uppercase font-bold"
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  if (!streakData) return null;
+
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in duration-500">
+    <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header Stats */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-surface-container-low p-6 rounded-2xl ghost-border flex items-center justify-between">
@@ -45,6 +66,7 @@ export default function StreakDisplay({ userId }: { userId: string }) {
                     ? 'bg-primary/20 border-primary text-primary shadow-glow' 
                     : 'bg-surface-container-high border-outline-variant text-tertiary/50'
                 }`}
+                title={`Semana del ${goal.weekStart.toLocaleDateString()}`}
               >
                 <span className="material-symbols-outlined text-lg">{goal.completed ? 'check' : 'close'}</span>
               </div>
@@ -53,7 +75,7 @@ export default function StreakDisplay({ userId }: { userId: string }) {
         </div>
       </section>
 
-      {/* Calendar Strip (Like Apple Fitness) */}
+      {/* Calendar Strip */}
       <section className="bg-surface-container-low p-8 rounded-[2rem] ghost-border overflow-hidden">
         <h3 className="font-headline font-bold text-lg uppercase tracking-tight mb-6 flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">calendar_month</span>
@@ -85,7 +107,7 @@ export default function StreakDisplay({ userId }: { userId: string }) {
         </div>
       </section>
 
-      {/* Training History (List) */}
+      {/* Training History */}
       <section className="bg-surface-container-low p-8 rounded-[2rem] ghost-border">
          <h3 className="font-headline font-bold text-lg uppercase tracking-tight mb-6 flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">history</span>

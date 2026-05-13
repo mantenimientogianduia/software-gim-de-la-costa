@@ -10,11 +10,12 @@ export function useStreak(userId: string) {
     async function fetchData() {
       try {
         setLoading(true);
+        setError(null);
         const data = await streakService.getStreakData(userId);
         setStreakData(data);
       } catch (err: any) {
         console.error('Error fetching streak data:', err);
-        setError(err.message);
+        setError(err.message || 'Error desconocido');
       } finally {
         setLoading(false);
       }
