@@ -3,8 +3,8 @@ import { useStreak } from '@/hooks/useStreak';
 import { motion } from 'motion/react';
 import { useRef, useEffect } from 'react';
 
-export default function StreakDisplay({ userId }: { userId: string }) {
-  const { streakData, loading, error } = useStreak(userId);
+export default function StreakDisplay({ userId, weeklyTrainingGoal = 3 }: { userId: string, weeklyTrainingGoal?: number }) {
+  const { streakData, loading, error } = useStreak(userId, weeklyTrainingGoal);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

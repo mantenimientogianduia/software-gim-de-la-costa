@@ -34,8 +34,9 @@ export class StreakService {
    * Calculates the streak data for a user
    * @param userId The user ID (email in this app)
    * @param daysToLookBack Default 90 days
+   * @param weeklyTrainingGoal Default 3 days
    */
-  async getStreakData(userId: string, daysToLookBack: number = 90): Promise<StreakData> {
+  async getStreakData(userId: string, daysToLookBack: number = 90, weeklyTrainingGoal: number = 3): Promise<StreakData> {
     const now = new Date();
     const startDate = new Date(now);
     startDate.setDate(now.getDate() - daysToLookBack);
@@ -97,9 +98,9 @@ export class StreakService {
       }
     }
 
-    // Weekly Goals (Fixed goal of 3 days per week for now)
+    // Weekly Goals
     const weeklyGoals: WeeklyGoal[] = [];
-    const goalValue = 3; 
+    const goalValue = weeklyTrainingGoal; 
 
     for (let i = 0; i < 4; i++) {
       const ws = new Date(now);

@@ -23,6 +23,11 @@ export interface UserProfile {
   lastCheckIn?: any;
   membershipValidUntil?: any;
   lastPaymentDate?: any;
+  weight?: number;
+  height?: number;
+  goals?: string;
+  weeklyTrainingGoal?: number;
+  currentPlan?: string;
   createdAt: any;
   updatedAt: any;
 }
@@ -39,6 +44,10 @@ export class UserService {
       status: role === 'admin' ? 'active' : 'pending',
       atGym: false,
       currentActivity: '',
+      weight: 0,
+      goals: '',
+      weeklyTrainingGoal: 3,
+      currentPlan: 'Básico',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -90,6 +99,11 @@ export class UserService {
   async updateUserDni(userId: string, dni: string): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { dni, updatedAt: serverTimestamp() });
+  }
+
+  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName'>>): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
   }
 }
 

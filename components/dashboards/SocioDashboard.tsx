@@ -7,9 +7,10 @@ import QRGenerator from '@/components/access/QRGenerator';
 import SessionView from '@/components/routines/SessionView';
 import { TrainingToolbox } from '@/components/training/TrainingToolbox';
 import StreakDisplay from '@/components/training/StreakDisplay';
+import PersonalInfo from '@/components/profile/PersonalInfo';
 
-export default function SocioDashboard({ profile }: { profile: UserProfile }) {
-  const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer' | 'streak'>('home');
+export default function SocioDashboard({ profile }: { profile: UserProfile & { id: string } }) {
+  const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer' | 'streak' | 'profile'>('home');
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-24 md:pb-0 flex flex-col md:flex-row">
@@ -41,6 +42,13 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
         >
           <span className={`material-symbols-outlined ${activeTab === 'streak' ? 'icon-fill' : ''}`}>local_fire_department</span>
           <span className="font-label text-[10px] uppercase font-bold mt-1">Racha</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('profile')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded transition-all ${activeTab === 'profile' ? 'text-primary-container bg-surface-container-high' : 'text-tertiary hover:text-white'}`}
+        >
+          <span className={`material-symbols-outlined ${activeTab === 'profile' ? 'icon-fill' : ''}`}>person</span>
+          <span className="font-label text-[10px] uppercase font-bold mt-1">Perfil</span>
         </button>
         <button 
           onClick={() => setActiveTab('timer')}
@@ -83,6 +91,13 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
           >
             <span className={`material-symbols-outlined ${activeTab === 'streak' ? 'icon-fill' : ''}`}>local_fire_department</span>
             <span className="font-label font-bold uppercase text-sm">Racha de Entrenamiento</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('profile')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'profile' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'profile' ? 'icon-fill' : ''}`}>person</span>
+            <span className="font-label font-bold uppercase text-sm">Mi Información</span>
           </button>
           <button 
             onClick={() => setActiveTab('timer')}
@@ -161,7 +176,11 @@ export default function SocioDashboard({ profile }: { profile: UserProfile }) {
                      )}
 
                      {activeTab === 'streak' && (
-                       <StreakDisplay userId={profile.email} />
+                       <StreakDisplay userId={profile.email} weeklyTrainingGoal={profile.weeklyTrainingGoal} />
+                     )}
+
+                     {activeTab === 'profile' && (
+                       <PersonalInfo profile={profile} />
                      )}
                  </div>
                  
