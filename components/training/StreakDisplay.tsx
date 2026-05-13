@@ -3,15 +3,27 @@ import { useStreak } from '@/hooks/useStreak';
 import { motion } from 'motion/react';
 
 export default function StreakDisplay({ userId }: { userId: string }) {
-  const { streakData, loading } = useStreak(userId);
+  const { streakData, loading, error } = useStreak(userId);
 
-  if (loading || !streakData) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="bg-error/10 border border-error/20 p-8 rounded-[2rem] text-center">
+        <span className="material-symbols-outlined text-4xl text-error mb-4">error</span>
+        <h3 className="font-headline font-bold text-lg text-error uppercase mb-2">Error al cargar la racha</h3>
+        <p className="font-body text-sm text-tertiary">{error}</p>
+      </div>
+    );
+  }
+
+  if (!streakData) return null;
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in duration-500">
