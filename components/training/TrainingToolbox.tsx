@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { StopwatchView } from './StopwatchView';
 import { IntervalView } from './IntervalView';
-import { Timer, Repeat, History } from 'lucide-react';
+import { CountdownView } from './CountdownView';
+import { Timer, Repeat, Hourglass, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-type ToolType = 'STOPWATCH' | 'INTERVAL' | 'HISTORY';
+type ToolType = 'STOPWATCH' | 'INTERVAL' | 'COUNTDOWN' | 'HISTORY';
 
 export function TrainingToolbox() {
   const [activeTool, setActiveTool] = useState<ToolType>('STOPWATCH');
@@ -14,6 +15,7 @@ export function TrainingToolbox() {
   const tabs = [
     { id: 'STOPWATCH' as ToolType, label: 'Stopwatch', icon: Timer },
     { id: 'INTERVAL' as ToolType, label: 'Interval', icon: Repeat },
+    { id: 'COUNTDOWN' as ToolType, label: 'Timer', icon: Hourglass },
 //    { id: 'HISTORY' as ToolType, label: 'Logs', icon: History },
   ];
 
@@ -53,6 +55,7 @@ export function TrainingToolbox() {
           >
             {activeTool === 'STOPWATCH' && <StopwatchView />}
             {activeTool === 'INTERVAL' && <IntervalView />}
+            {activeTool === 'COUNTDOWN' && <CountdownView />}
             {activeTool === 'HISTORY' && (
               <div className="flex flex-col items-center justify-center py-20 text-white/20">
                 <History size={48} />
