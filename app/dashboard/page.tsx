@@ -1,70 +1,40 @@
 'use client';
-
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/use-auth';
-
-import AdminDashboard from '@/components/dashboards/AdminDashboard';
-import ProfesorDashboard from '@/components/dashboards/ProfesorDashboard';
+import { auth } from '@/app/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { userService, UserProfile } from '@/services/user.service';
 import SocioDashboard from '@/components/dashboards/SocioDashboard';
-import RoleSwitcher from '@/components/debug/RoleSwitcher';
-
-type UserRole = 'admin' | 'profesor' | 'socio';
-
-const DEV_EMAIL = 'gino.pieretti00@gmail.com';
+import ProfesorDashboard from '@/components/dashboards/ProfesorDashboard';
 
 export default function DashboardPage() {
-  const { user, profile, loading } = useAuth();
-  const [overrideRole, setOverrideRole] = useState<UserRole | null>(null);
-  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<UserProfile & { id: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-    if (!loading && profile && profile.status === 'pending' && profile.role !== 'admin' && user?.email !== DEV_EMAIL) {
-      router.push('/login');
-    }
-  }, [user, profile, loading, router]);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUser(user);
+        const userProfile = await userService.getUserProfile(user.uid);
+        if (userProfile) {
+          setProfile({ ...userProfile, id: user.uid });
+        }
+      } else {
+        // Redirect to login if needed
+        window.location.href = '/';
+      }
+      setLoading(false);
+    });
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-         <div className="font-label text-primary font-bold uppercase tracking-widest animate-pulse">CARGANDO...</div>
-      </div>
-    );
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Cargando...</div>;
+  if (!profile) return <div className="flex items-center justify-center min-h-screen">Error al cargar perfil</div>;
+
+  if (profile.role === 'profesor' || profile.role === 'admin') {
+    return <ProfesorDashboard profile={profile} />;
   }
 
-  if (!user || !profile || (profile.status === 'pending' && profile.role !== 'admin' && user.email !== DEV_EMAIL)) {
-    return null; 
-  }
-
-  const activeRole = overrideRole || (profile.role as UserRole);
-  const isDev = user.email === DEV_EMAIL;
-
-  const renderDashboard = () => {
-    if (!profile || !user) return null;
-    const dashboardProfile = { ...profile, id: user.uid, role: activeRole };
-
-    switch (activeRole) {
-      case 'admin':
-        return <AdminDashboard profile={dashboardProfile} />;
-      case 'profesor':
-        return <ProfesorDashboard profile={dashboardProfile} />;
-      default:
-        return <SocioDashboard profile={dashboardProfile} />;
-    }
-  };
-
-  return (
-    <>
-      {isDev && (
-        <RoleSwitcher 
-          currentRole={activeRole} 
-          onRoleChange={setOverrideRole} 
-        />
-      )}
-      {renderDashboard()}
-    </>
-  );
+  return <SocioDashboard profile={profile} />;
 }
