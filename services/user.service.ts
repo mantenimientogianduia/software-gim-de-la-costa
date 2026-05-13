@@ -1,84 +1,95 @@
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { 
-  collection, 
   doc, 
   setDoc, 
   getDoc, 
   getDocs, 
+  collection, 
   query, 
-  where, 
-  serverTimestamp, 
-  updateDoc 
+  where,
+  updateDoc, 
+  serverTimestamp 
 } from 'firebase/firestore';
-import { z } from 'zod';
 
-export const UserProfileSchema = z.object({
-  id: z.string().optional(),
-  email: z.string().email(),
-  firstName: z.string().min(2),
-  lastName: z.string().min(2),
-  role: z.enum(['admin', 'instructor', 'socio']).default('socio'),
-  status: z.enum(['active', 'inactive', 'pending']).default('pending'),
-   dni: z.string().optional(),
-  membershipValidUntil: z.any().optional(),
-  lastPaymentDate: z.any().optional(),
-  createdAt: z.any().optional(),
-  updatedAt: z.any().optional(),
-});
-
-export type UserProfile = z.infer<typeof UserProfileSchema>;
+export interface UserProfile {
+  dni?: string;
+  email: string;
+  role: 'admin' | 'profesor' | 'socio';
+  firstName: string;
+  lastName: string;
+  status: 'active' | 'inactive' | 'pending';
+  atGym?: boolean;
+  currentActivity?: string;
+  lastCheckIn?: any;
+  membershipValidUntil?: any;
+  lastPaymentDate?: any;
+  createdAt: any;
+  updatedAt: any;
+}
 
 export class UserService {
-  private usersRef = collection(db, 'users');
-
-  async createUserProfile(uid: string, email: string, firstName: string, lastName: string, role: 'admin' | 'instructor' | 'socio' = 'socio', dni?: string): Promise<void> {
-    const userDoc = doc(this.usersRef, uid);
-    await setDoc(userDoc, {
+  async createUserProfile(userId: string, email: string, firstName: string, lastName: string, role: 'admin' | 'profesor' | 'socio' = 'socio', dni?: string): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, {
+      dni: dni || '',
       email,
+      role,
       firstName,
       lastName,
-      role,
       status: role === 'admin' ? 'active' : 'pending',
-      dni: dni || '',
+      atGym: false,
+      currentActivity: '',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
   }
 
-  async getUserProfile(uid: string): Promise<UserProfile | null> {
-    const docSnap = await getDoc(doc(this.usersRef, uid));
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as UserProfile;
-    }
-    return null;
+  async getUserByDni(dni: string): Promise<(UserProfile & { id: string }) | null> {
+    const q = query(collection(db, 'users'), where('dni', '==', dni));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return { ...snap.docs[0].data(), id: snap.docs[0].id } as any;
   }
 
-  async getUserByEmail(email: string): Promise<UserProfile | null> {
-    const q = query(this.usersRef, where('email', '==', email));
+  async getUserByEmail(email: string): Promise<(UserProfile & { id: string }) | null> {
+    const q = query(collection(db, 'users'), where('email', '==', email));
     const snap = await getDocs(q);
-    if (!snap.empty) {
-      return { id: snap.docs[0].id, ...snap.docs[0].data() } as UserProfile;
-    }
-    return null;
+    if (snap.empty) return null;
+    return { ...snap.docs[0].data(), id: snap.docs[0].id } as any;
+  }
+
+  async getUserProfile(userId: string): Promise<UserProfile | null> {
+    const userRef = doc(db, 'users', userId);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) return null;
+    return snap.data() as UserProfile;
   }
 
   async getAllUsers(): Promise<UserProfile[]> {
-    const snap = await getDocs(this.usersRef);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
-  }
-
-  async getSocios(): Promise<UserProfile[]> {
-    const q = query(this.usersRef, where('role', '==', 'socio'));
+    const q = query(collection(db, 'users'));
     const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+    return snap.docs.map(doc => {
+      const data = doc.data();
+      return { 
+        ...data,
+        id: doc.id,
+      } as UserProfile & { id: string };
+    });
   }
 
-  async updateUserStatus(uid: string, status: UserProfile['status']): Promise<void> {
-    const userRef = doc(this.usersRef, uid);
-    await updateDoc(userRef, { 
-      status, 
-      updatedAt: serverTimestamp() 
-    });
+  async updateUserStatus(userId: string, status: 'active' | 'inactive' | 'pending'): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { status, updatedAt: serverTimestamp() });
+  }
+
+  async updateUserRole(userId: string, role: 'admin' | 'profesor' | 'socio'): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { role, updatedAt: serverTimestamp() });
+  }
+
+  async updateUserDni(userId: string, dni: string): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { dni, updatedAt: serverTimestamp() });
   }
 }
 

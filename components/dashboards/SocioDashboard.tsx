@@ -1,122 +1,172 @@
 'use client';
 import { useState } from 'react';
 import { UserProfile } from '@/services/user.service';
-import QRGenerator from '@/components/access/QRGenerator';
-import ClassBookingList from '@/components/classes/ClassBookingList';
 import SocioRoutineView from '@/components/routines/SocioRoutineView';
+import ClassBookingList from '@/components/classes/ClassBookingList';
+import QRGenerator from '@/components/access/QRGenerator';
 import SessionView from '@/components/routines/SessionView';
-import { motion, AnimatePresence } from 'motion/react';
 
 export default function SocioDashboard({ profile }: { profile: UserProfile }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'routine' | 'classes'>('overview');
-  const [isTraining, setIsTraining] = useState(false); // In a real app, this would be fetched from attendance
-
-  const tabs = [
-    { id: 'overview', name: 'Inicio', icon: 'dashboard' },
-    { id: 'routine', name: 'Entrenamiento', icon: 'fitness_center' },
-    { id: 'classes', name: 'Clases', icon: 'calendar_today' },
-  ];
-
-  if (isTraining) {
-      return <SessionView profile={profile} />;
-  }
+  const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine'>('home');
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12 pb-32">
-       {/* Header Socio */}
-       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-16">
-          <div>
-             <h1 className="font-headline text-5xl font-black uppercase tracking-tighter italic">HOLA, {profile.firstName}</h1>
-             <p className="font-label text-xs uppercase tracking-[0.3em] text-tertiary mt-2">Membresía <span className="text-primary font-black">{profile.status}</span></p>
-          </div>
-          
-          <div className="flex bg-surface-container-low p-1.5 rounded-2xl border border-white/5">
-             {tabs.map(tab => (
-               <button
-                 key={tab.id}
-                 onClick={() => setActiveTab(tab.id as any)}
-                 className={`flex items-center gap-3 px-6 py-3 rounded-xl font-label text-[10px] uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-primary text-on-primary shadow-glow font-black' : 'text-tertiary hover:text-white'}`}
-               >
-                 <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-                 {tab.name}
-               </button>
-             ))}
-          </div>
-       </header>
+    <div className="min-h-screen bg-surface text-on-surface pb-24 md:pb-0 flex flex-col md:flex-row">
+      <nav className="md:hidden fixed bottom-0 w-full flex justify-around items-center pt-2 pb-6 px-4 bg-surface/90 backdrop-blur-xl z-50 border-t border-outline-variant/15">
+        <button 
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded transition-all ${activeTab === 'home' ? 'text-primary-container bg-surface-container-high' : 'text-tertiary hover:text-white'}`}
+        >
+          <span className={`material-symbols-outlined ${activeTab === 'home' ? 'icon-fill' : ''}`}>home</span>
+          <span className="font-label text-[10px] uppercase font-bold mt-1">Inicio</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('classes')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded transition-all ${activeTab === 'classes' ? 'text-primary-container bg-surface-container-high' : 'text-tertiary hover:text-white'}`}
+        >
+          <span className={`material-symbols-outlined ${activeTab === 'classes' ? 'icon-fill' : ''}`}>calendar_today</span>
+          <span className="font-label text-[10px] uppercase font-bold mt-1">Clases</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('routine')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded transition-all ${activeTab === 'routine' ? 'text-primary-container bg-surface-container-high' : 'text-tertiary hover:text-white'}`}
+        >
+          <span className={`material-symbols-outlined ${activeTab === 'routine' ? 'icon-fill' : ''}`}>fitness_center</span>
+          <span className="font-label text-[10px] uppercase font-bold mt-1">Rutina</span>
+        </button>
+      </nav>
 
-       <main>
-          <AnimatePresence mode="wait">
-             {activeTab === 'overview' && (
-               <motion.div 
-                 key="overview"
-                 initial={{ opacity: 0, y: 20 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 exit={{ opacity: 0, y: -20 }}
-                 className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-               >
-                  <div className="lg:col-span-2 space-y-8">
-                     <div className="bg-surface-container-low p-8 rounded-3xl ghost-border h-[300px] flex flex-col justify-end relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-br from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <h2 className="relative z-10 font-headline text-4xl font-black uppercase tracking-tight italic mb-4">Tu progreso esta semana</h2>
-                        <div className="relative z-10 flex gap-2">
-                           {[1,2,3,4,5,6,7].map(d => (
-                             <div key={d} className="flex-1 h-32 bg-white/5 rounded-lg overflow-hidden flex flex-col justify-end">
-                                <div className="bg-primary/50 w-full" style={{ height: `${Math.random() * 100}%` }}></div>
+      <aside className="hidden md:flex flex-col h-screen w-80 bg-surface-container-low ghost-border py-8 sticky top-0">
+        <div className="px-6 mb-12">
+          <h1 className="font-headline text-xl text-primary-container font-black tracking-tighter uppercase">GYM DE LA COSTA</h1>
+        </div>
+        <nav className="flex-1 flex flex-col gap-2">
+          <button 
+            onClick={() => setActiveTab('home')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'home' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'home' ? 'icon-fill' : ''}`}>home</span>
+            <span className="font-label font-bold uppercase text-sm">Inicio</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('classes')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'classes' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'classes' ? 'icon-fill' : ''}`}>calendar_today</span>
+            <span className="font-label font-bold uppercase text-sm">Mis Clases</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('routine')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'routine' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'routine' ? 'icon-fill' : ''}`}>fitness_center</span>
+            <span className="font-label font-bold uppercase text-sm">Mi Rutina</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+         {profile.atGym ? (
+            <SessionView profile={profile} />
+         ) : (
+            <>
+              <header className="flex justify-between items-end mb-12">
+                <div>
+                  <h1 className="font-headline font-black text-4xl md:text-6xl tracking-tight uppercase mb-2">
+                    ¿Listo, <span className="text-primary-container">{profile.firstName}</span>?
+                  </h1>
+                  <p className="font-body text-tertiary text-lg uppercase tracking-widest">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                </div>
+              </header>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                 <div className="lg:col-span-8 flex flex-col gap-6">
+                     {activeTab === 'home' && (
+                       <>
+                         <section onClick={() => setActiveTab('routine')} className="cursor-pointer bg-surface-container-low p-6 md:p-8 rounded-lg relative overflow-hidden ghost-border hover:bg-surface-container-high transition-all">
+                           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                             <div>
+                               <span className="font-label text-primary text-sm uppercase tracking-widest mb-2 block">Acceso Rápido</span>
+                               <h2 className="font-headline font-bold text-3xl md:text-4xl mb-2 italic">VER MI RUTINA</h2>
                              </div>
-                           ))}
-                        </div>
-                     </div>
-                     
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="bg-surface-container-low p-8 rounded-3xl ghost-border">
-                            <h3 className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-6">Próxima Clase</h3>
-                            <p className="font-headline text-2xl font-black uppercase italic mb-2">Power Lifting</p>
-                            <p className="font-body text-primary text-sm font-bold">HOY - 19:30 HS</p>
-                        </div>
-                        <div className="bg-surface-container-low p-8 rounded-3xl ghost-border">
-                            <h3 className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-6">Estado Cuenta</h3>
-                            <p className="font-headline text-2xl font-black uppercase italic mb-2">Al día</p>
-                            <p className="font-body text-tertiary text-sm opacity-60">Próximo vencimiento: 12/06</p>
-                        </div>
-                     </div>
-                  </div>
+                             <button className="bg-gradient-primary text-on-primary font-label text-sm font-bold uppercase tracking-wider py-3 px-8 rounded-sm shadow-glow flex items-center gap-2 hover:scale-[1.02] transition-transform">
+                               Comenzar <span className="material-symbols-outlined">arrow_forward</span>
+                             </button>
+                           </div>
+                         </section>
 
-                  <div className="space-y-8">
-                     <QRGenerator dni={profile.dni} />
-                     <button 
-                       onClick={() => setIsTraining(true)}
-                       className="w-full py-8 bg-gradient-primary rounded-3xl shadow-glow text-on-primary font-headline text-2xl font-black uppercase tracking-widest italic flex flex-col items-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                     >
-                        <span className="material-symbols-outlined text-4xl">play_circle</span>
-                        ENTRENAR AHORA
-                     </button>
-                  </div>
-               </motion.div>
-             )}
+                         <section className="bg-surface-container-low p-6 md:p-8 rounded-lg ghost-border">
+                           <div className="flex justify-between items-center mb-6">
+                             <h3 className="font-headline font-bold text-xl uppercase tracking-tight">Tu Progreso</h3>
+                           </div>
+                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                             <div className="bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between border-b border-b-primary/30">
+                               <span className="material-symbols-outlined text-primary mb-4">local_fire_department</span>
+                               <div>
+                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Entrenamientos</p>
+                                 <p className="font-headline font-bold text-2xl">--<span className="text-lg text-primary">/--</span></p>
+                               </div>
+                             </div>
+                             <div className="bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between border-b border-b-primary/30">
+                               <span className="material-symbols-outlined text-primary mb-4">timer</span>
+                               <div>
+                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Tiempo Total</p>
+                                 <p className="font-headline font-bold text-2xl">--h<span className="text-lg text-primary">--m</span></p>
+                               </div>
+                             </div>
+                           </div>
+                         </section>
+                       </>
+                     )}
 
-             {activeTab === 'routine' && (
-               <motion.div 
-                 key="routine"
-                 initial={{ opacity: 0, scale: 0.98 }}
-                 animate={{ opacity: 1, scale: 1 }}
-                 exit={{ opacity: 0, scale: 0.98 }}
-               >
-                  <SocioRoutineView userId={profile.email} />
-               </motion.div>
-             )}
+                     {activeTab === 'routine' && (
+                       <SocioRoutineView userId={profile.email} />
+                     )}
 
-             {activeTab === 'classes' && (
-                <motion.div
-                  key="classes"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                   <ClassBookingList userId={profile.email} />
-                </motion.div>
-             )}
-          </AnimatePresence>
-       </main>
+                     {activeTab === 'classes' && (
+                       <ClassBookingList userId={profile.email} />
+                     )}
+                 </div>
+                 
+                 <div className="lg:col-span-4 flex flex-col gap-6">
+                    <section className="bg-surface-container-low p-8 rounded-[2rem] ghost-border relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
+                       <h3 className="font-headline font-bold text-lg uppercase tracking-tight mb-6">Membresía</h3>
+                       
+                       <div className="space-y-6 relative z-10">
+                          {profile.membershipValidUntil ? (
+                             <>
+                                <div>
+                                   <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-1">Tu cuenta vence el</p>
+                                   <p className="font-headline text-3xl font-black italic tracking-tighter text-primary">
+                                      {profile.membershipValidUntil.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                   </p>
+                                </div>
+                                <div className="h-1 bg-surface-container-high rounded-full overflow-hidden">
+                                   <div className={`h-full bg-primary transition-all duration-1000 ${
+                                      (profile.membershipValidUntil.toDate().getTime() - new Date().getTime()) < 0 ? 'bg-error w-full' : 'w-2/3'
+                                   }`}></div>
+                                </div>
+                                <p className="font-body text-xs text-tertiary italic">
+                                   {(profile.membershipValidUntil.toDate().getTime() - new Date().getTime()) < 0 
+                                      ? 'Tu cuota está vencida. Por favor, regulariza tu situación en administración.' 
+                                      : 'Tu membresía se encuentra activa y vigente.'}
+                                </p>
+                             </>
+                          ) : (
+                             <div className="py-4 text-center">
+                                <span className="material-symbols-outlined text-4xl text-tertiary mb-2">event_busy</span>
+                                <p className="font-label text-xs uppercase tracking-widest text-tertiary">Sin datos de membresía</p>
+                                <p className="text-[10px] text-tertiary/50 mt-2 italic">Consulta en administración para activar tu plan.</p>
+                             </div>
+                          )}
+                       </div>
+                    </section>
+                    <QRGenerator dni={profile.dni} />
+                 </div>
+              </div>
+            </>
+         )}
+      </main>
     </div>
   );
 }

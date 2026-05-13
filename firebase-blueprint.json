@@ -2,131 +2,197 @@
   "entities": {
     "User": {
       "title": "User Profile",
-      "description": "User profile with role, membership status and QR DNI",
+      "description": "Information about gym members, teachers, and admins",
       "type": "object",
       "properties": {
         "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "profesor", "socio"] },
         "firstName": { "type": "string" },
         "lastName": { "type": "string" },
-        "dni": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "instructor", "socio"] },
         "status": { "type": "string", "enum": ["active", "inactive", "pending"] },
-        "membershipValidUntil": { "type": "object", "description": "Firestore Timestamp" },
-        "lastPaymentDate": { "type": "object", "description": "Firestore Timestamp" },
-        "createdAt": { "type": "object" },
-        "updatedAt": { "type": "object" }
+        "atGym": { "type": "boolean", "description": "Is the user currently at the gym?" },
+        "currentActivity": { "type": "string", "description": "Short description of current training" },
+        "lastCheckIn": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["email", "role", "status"]
+      "required": ["email", "role", "firstName", "lastName", "status"]
     },
-    "Payment": {
-      "title": "Payment Record",
-      "description": "Monthly fee payment records",
+    "Attendance": {
+      "title": "Attendance Record",
+      "description": "Log of user check-ins and check-outs",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "User email" },
-        "userName": { "type": "string" },
-        "amount": { "type": "number" },
-        "concept": { "type": "string" },
-        "monthsPaid": { "type": "number" },
-        "paymentDate": { "type": "object" },
-        "validUntil": { "type": "object" },
-        "status": { "type": "string", "enum": ["confirmed", "pending", "cancelled"] },
-        "createdAt": { "type": "object" }
+        "userId": { "type": "string" },
+        "checkInAt": { "type": "string", "format": "date-time" },
+        "checkOutAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["present", "completed"] }
       },
-      "required": ["userId", "amount", "validUntil"]
+      "required": ["userId", "checkInAt", "status"]
     },
     "TrainingPlan": {
       "title": "Training Plan",
-      "description": "Set of weeks and exercises for a user or template",
+      "description": "Professional training plan (Template or Assigned)",
       "type": "object",
       "properties": {
         "title": { "type": "string" },
         "description": { "type": "string" },
         "type": { "type": "string", "enum": ["template", "assignment"] },
-        "userId": { "type": "string" },
+        "userId": { "type": "string", "description": "Target socio email (if assignment)" },
         "instructorId": { "type": "string" },
         "status": { "type": "string", "enum": ["draft", "active", "completed", "archived"] },
-        "weeksCount": { "type": "number" },
+        "weeksCount": { "type": "integer" },
         "level": { "type": "string", "enum": ["beginner", "intermediate", "advanced"] },
-        "startDate": { "type": "object" },
-        "tags": { "type": "array" }
-      }
+        "startDate": { "type": "string", "format": "date-time" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "type", "instructorId", "status"]
     },
     "TrainingWeek": {
       "title": "Training Week",
-      "description": "A week of training within a plan",
+      "description": "A week within a training plan including scheduled days",
       "type": "object",
       "properties": {
         "planId": { "type": "string" },
-        "order": { "type": "number" },
+        "order": { "type": "integer" },
         "type": { "type": "string", "enum": ["base", "deload", "peak", "test"] },
         "goal": { "type": "string" },
-        "days": { "type": "array" }
-      }
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "order": { "type": "integer" },
+              "name": { "type": "string" },
+              "blocks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string", "enum": ["warmup", "main", "accessory", "finisher"] },
+                    "exercises": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": { "type": "string" },
+                          "prescribed": {
+                            "type": "object",
+                            "properties": {
+                              "sets": { "type": "integer" },
+                              "reps": { "type": "string" },
+                              "load": { "type": "string" },
+                              "rpe": { "type": "integer" },
+                              "rest": { "type": "string" }
+                            }
+                          },
+                          "notes": { "type": "string" },
+                          "videoUrl": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "required": ["planId", "order", "days"]
     },
     "WorkoutSession": {
       "title": "Workout Session",
-      "description": "Log of a performed workout",
+      "description": "The real data of a completed workout day",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "planId": { "type": "string" },
-        "weekOrder": { "type": "number" },
-        "dayOrder": { "type": "number" },
-        "date": { "type": "object" },
-        "duration": { "type": "number" },
-        "feeling": { "type": "string" },
-        "energy": { "type": "number" },
-        "exercises": { "type": "array" },
+        "weekOrder": { "type": "integer" },
+        "dayOrder": { "type": "integer" },
+        "date": { "type": "string", "format": "date-time" },
+        "duration": { "type": "integer", "description": "minutes" },
+        "feeling": { "type": "string", "enum": ["tired", "good", "great", "injured"] },
+        "energy": { "type": "integer", "description": "1 to 10" },
+        "exercises": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "sets": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "reps": { "type": "integer" },
+                    "weight": { "type": "number" },
+                    "rpe": { "type": "integer" },
+                    "rest": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        },
         "notes": { "type": "string" }
-      }
+      },
+      "required": ["userId", "planId", "date", "exercises"]
     },
-    "GymClass": {
+    "Class": {
       "title": "Gym Class",
-      "description": "Scheduled group class",
+      "description": "Scheduled classes like Crossfit, Yoga, etc.",
       "type": "object",
       "properties": {
         "title": { "type": "string" },
         "instructorId": { "type": "string" },
-        "startTime": { "type": "object" },
-        "endTime": { "type": "object" },
-        "capacity": { "type": "number" },
-        "enrolledCount": { "type": "number" },
-        "status": { "type": "string", "enum": ["scheduled", "cancelled", "completed"] }
-      }
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "capacity": { "type": "integer" },
+        "enrolledCount": { "type": "integer" },
+        "status": { "type": "string", "enum": ["active", "cancelled"] }
+      },
+      "required": ["title", "instructorId", "startTime", "endTime", "capacity", "enrolledCount"]
     },
     "Booking": {
-      "title": "Booking",
-      "description": "User reservation for a class",
+      "title": "Class Booking",
+      "description": "Record of a member attending a class",
       "type": "object",
       "properties": {
         "classId": { "type": "string" },
         "userId": { "type": "string" },
         "status": { "type": "string", "enum": ["confirmed", "cancelled"] },
-        "createdAt": { "type": "object" }
-      }
-    },
-    "Attendance": {
-      "title": "Attendance record",
-      "description": "Check-in/out records for gym access",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "checkIn": { "type": "object" },
-        "checkOut": { "type": "object" },
-        "status": { "type": "string", "enum": ["present", "completed"] }
-      }
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["classId", "userId", "status"]
     }
   },
   "firestore": {
-    "/users/{userId}": { "schema": "User", "description": "Global user profiles" },
-    "/payments/{paymentId}": { "schema": "Payment", "description": "Financial records" },
-    "/training_plans/{planId}": { "schema": "TrainingPlan", "description": "Training templates and assignments" },
-    "/training_weeks/{weekId}": { "schema": "TrainingWeek", "description": "Weeks belonging to a plan" },
-    "/workout_sessions/{sessionId}": { "schema": "WorkoutSession", "description": "User exercise logs" },
-    "/classes/{classId}": { "schema": "GymClass", "description": "Class schedule" },
-    "/bookings/{bookingId}": { "schema": "Booking", "description": "Class reservations" },
-    "/attendance/{attendanceId}": { "schema": "Attendance", "description": "Access logs" },
-    "/exercises/{exerciseId}": { "schema": { "type": "object" }, "description": "Master list of exercises" }
+    "/training_plans/{planId}": {
+      "schema": "TrainingPlan",
+      "description": "Masters or Assigned plans"
+    },
+    "/training_weeks/{weekId}": {
+      "schema": "TrainingWeek",
+      "description": "Details of exercises and structure of a specific week"
+    },
+    "/workout_sessions/{sessionId}": {
+      "schema": "WorkoutSession",
+      "description": "The real recorded data from training days"
+    },
+    "/users/{userId}": {
+    "/classes/{classId}": {
+      "schema": "Class",
+      "description": "Available gym classes"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "User class registrations"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "Attendance",
+      "description": "User gym check-in/out logs"
+    }
   }
 }

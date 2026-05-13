@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { GymClass } from '@/services/class.service';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface WeeklyCalendarProps {
   classes: GymClass[];
@@ -53,7 +53,7 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
     end.setDate(start.getDate() + 7);
 
     return classes.filter(c => {
-      const date = c.startTime.toDate ? c.startTime.toDate() : new Date(c.startTime);
+      const date = c.startTime.toDate();
       return date >= start && date < end;
     });
   }, [classes, weekHeading.monday]);
@@ -61,13 +61,14 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
   const dynamicHours = useMemo(() => {
     if (filteredClasses.length === 0) return Array.from({ length: 17 }, (_, i) => i + 6);
     
-    const earliestHour = Math.min(...filteredClasses.map(c => (c.startTime.toDate ? c.startTime.toDate() : new Date(c.startTime)).getHours()));
+    const earliestHour = Math.min(...filteredClasses.map(c => c.startTime.toDate().getHours()));
     const latestHour = Math.max(...filteredClasses.map(c => {
-      const start = c.startTime.toDate ? c.startTime.toDate() : new Date(c.startTime);
-      const end = c.endTime?.toDate ? c.endTime.toDate() : new Date(start.getTime() + 60 * 60 * 1000);
+      const end = c.endTime?.toDate ? c.endTime.toDate() : new Date(c.startTime.toDate().getTime() + 60 * 60 * 1000);
       return end.getHours();
     }));
 
+    // Requirement: if no classes before 12, start at 11 or 12.
+    // Let's use 11 as a "pro" padding if everything is in the afternoon.
     const startHour = earliestHour >= 12 ? 11 : 6;
     const endHour = Math.max(20, latestHour + 1);
 
@@ -84,7 +85,7 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
   };
 
   const getPositionStyles = (gymClass: GymClass) => {
-    const date = gymClass.startTime.toDate ? gymClass.startTime.toDate() : new Date(gymClass.startTime);
+    const date = gymClass.startTime.toDate();
     const currentHour = date.getHours();
     const startMinutes = date.getMinutes();
     
@@ -107,7 +108,7 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
       {/* Calendar Header */}
       <div className="p-6 border-b border-outline-variant/15 flex justify-between items-center bg-surface-container-high/50">
         <div className="flex items-center gap-6">
-           <h3 className="font-headline text-xl font-black uppercase tracking-tighter text-primaryitalic">{weekHeading.range}</h3>
+           <h3 className="font-headline text-xl font-black uppercase tracking-tighter text-primary-container italic">{weekHeading.range}</h3>
            <div className="flex bg-surface-container-lowest rounded-lg p-1 border border-outline-variant/10">
               <button 
                 onClick={() => changeWeek(-1)}
@@ -169,8 +170,9 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
                 <AnimatePresence>
                   {filteredClasses
                     .filter(c => {
-                      const d = c.startTime.toDate ? c.startTime.toDate() : new Date(c.startTime);
+                      const d = c.startTime.toDate();
                       const dayOfWeek = d.getDay();
+                      // Map Sunday (0) to index 6, Monday (1) to 0...
                       const targetIdx = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                       return targetIdx === colIdx;
                     })
@@ -183,13 +185,16 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
                         whileHover={{ scale: 1.02, zIndex: 10 }}
                         onClick={() => onClassClick?.(c)}
                         style={getPositionStyles(c)}
-                        className="absolute left-1 right-1 bg-primary text-on-primary rounded-lg shadow-glow-error p-3 cursor-pointer overflow-hidden border border-white/20 backdrop-blur-sm group"
+                        className="absolute left-1 right-1 bg-primary/90 text-on-primary rounded-lg shadow-glow-error p-3 cursor-pointer overflow-hidden border border-white/20 backdrop-blur-sm group"
                       >
                         <div className="flex flex-col h-full">
                            <h4 className="font-headline text-[11px] font-black uppercase leading-tight truncate mb-1">{c.title}</h4>
                            <div className="flex items-center gap-2 mt-auto">
                               <span className="material-symbols-outlined text-[10px] opacity-70">person</span>
                               <span className="font-label text-[9px] uppercase tracking-tighter opacity-70">{c.enrolledCount}/{c.capacity}</span>
+                           </div>
+                           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="material-symbols-outlined text-xs">edit_calendar</span>
                            </div>
                         </div>
                       </motion.div>

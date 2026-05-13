@@ -1,16 +1,18 @@
 import firebaseRulesPlugin from '@firebase/eslint-plugin-security-rules';
 import nextPlugin from '@next/eslint-plugin-next';
-import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
-    ignores: ['dist/**/*', '.next/**/*']
+    ignores: ['.next/**', 'node_modules/**', 'dist/**'],
   },
   {
-    files: ['*.rules'],
     plugins: {
-      '@firebase/security-rules': firebaseRulesPlugin
+      '@next/next': nextPlugin,
     },
-    rules: firebaseRulesPlugin.configs['flat/recommended'].rules
-  }
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs['core-web-vitals'].rules,
+    },
+  },
+  firebaseRulesPlugin.configs['flat/recommended']
 ];

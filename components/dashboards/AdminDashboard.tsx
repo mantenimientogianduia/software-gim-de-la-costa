@@ -1,160 +1,122 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { UserProfile, userService } from '@/services/user.service';
-import { financeService, Payment } from '@/services/finance.service';
-import { attendanceService, AttendanceRecord } from '@/services/attendance.service';
-import { classService, GymClass } from '@/services/class.service';
-import { motion, AnimatePresence } from 'motion/react';
-
+import { useState } from 'react';
+import { UserProfile } from '@/services/user.service';
+import UserManager from '@/components/admin/UserManager';
+import FinanceManager from '@/components/admin/FinanceManager';
+import AdminOverview from '@/components/admin/AdminOverview';
 import ClassScheduler from '@/components/classes/ClassScheduler';
+import QRScanner from '@/components/access/QRScanner';
+import LiveAttendance from '@/components/access/LiveAttendance';
+import RoutineEditor from '@/components/routines/RoutineEditor';
 
 export default function AdminDashboard({ profile }: { profile: UserProfile }) {
-  const [activeTab, setActiveTab] = useState<'attendance' | 'users' | 'finance' | 'classes'>('attendance');
-  const [attendees, setAttendees] = useState<AttendanceRecord[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadAdminData() {
-      try {
-        const [att, usrs] = await Promise.all([
-          attendanceService.getActiveUsers(),
-          userService.getAllUsers()
-        ]);
-        setAttendees(att);
-        setUsers(usrs);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadAdminData();
-  }, []);
-
-  const handleApproveUser = async (uid: string) => {
-    try {
-      await userService.updateUserStatus(uid, 'active');
-      setUsers(users.map(u => u.id === uid ? { ...u, status: 'active' } : u));
-    } catch (err) {
-      alert('Error al aprobar usuario');
-    }
-  };
-
-  const tabs = [
-    { id: 'attendance', name: 'Presentismo', icon: 'groups' },
-    { id: 'users', name: 'Socios', icon: 'person_search' },
-    { id: 'finance', name: 'Pagos', icon: 'payments' },
-    { id: 'classes', name: 'Clases', icon: 'schedule' },
-  ];
-
-  if (loading) return <div>Cargando panel de control...</div>;
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'classes' | 'finance' | 'access' | 'routines'>('overview');
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12">
-       <header className="mb-16 flex flex-col md:flex-row justify-between items-end gap-8">
-          <div>
-            <span className="font-label text-[10px] uppercase tracking-[0.4em] text-primary mb-2 block">Administración Central</span>
-            <h1 className="font-headline text-6xl font-black uppercase tracking-tighter italic">PANEL DE CONTROL</h1>
+    <div className="flex h-screen overflow-hidden bg-surface text-on-surface">
+      <aside className="hidden md:flex flex-col h-full w-72 bg-surface-container-low py-10 z-40 border-r border-outline-variant/10 relative">
+        <div className="absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-transparent via-primary/50 to-transparent opacity-30"></div>
+        <div className="px-8 mb-16">
+          <div className="flex items-center gap-3 mb-2">
+             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+                <span className="material-symbols-outlined text-white text-lg font-black">fitness_center</span>
+             </div>
+             <h2 className="font-headline text-lg text-primary-container font-black tracking-tighter uppercase italic">COSTA GYM</h2>
           </div>
-          
-          <div className="flex bg-surface-container-low p-2 rounded-2xl border border-white/5 overflow-x-auto no-scrollbar">
-             {tabs.map(tab => (
-               <button
-                 key={tab.id}
-                 onClick={() => setActiveTab(tab.id as any)}
-                 className={`flex items-center gap-3 px-6 py-4 rounded-xl font-label text-[10px] uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-primary text-on-primary shadow-glow font-black' : 'text-tertiary hover:text-white'}`}
-               >
-                 <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-                 {tab.name}
-               </button>
-             ))}
-          </div>
-       </header>
+          <div className="font-label text-[10px] font-black uppercase tracking-[0.3em] text-tertiary opacity-50">Control Central</div>
+        </div>
+        <nav className="flex-1 flex flex-col gap-1 px-4">
+          <button 
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'overview' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'overview' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>dashboard</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Dashboard</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'users' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'users' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>group</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Socios</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('classes')}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'classes' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'classes' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>calendar_today</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Clases</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('access')}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'access' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'access' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>qr_code_scanner</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Control</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('routines')}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'routines' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'routines' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>fitness_center</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Rutinas</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('finance')}
+            className={`flex items-center gap-4 px-6 py-4 rounded-xl transition-all group ${activeTab === 'finance' ? 'bg-primary text-on-primary shadow-glow ring-1 ring-white/20' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined text-xl ${activeTab === 'finance' ? 'icon-fill' : 'group-hover:scale-110 transition-transform'}`}>payments</span>
+            <span className="font-label font-black uppercase text-[11px] tracking-widest">Finanzas</span>
+          </button>
+        </nav>
+        
+        <div className="mt-auto px-8 py-6 border-t border-outline-variant/10">
+           <div className="flex items-center gap-4 opacity-50 hover:opacity-100 transition-opacity cursor-pointer">
+              <div className="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center font-bold text-xs ring-1 ring-outline-variant/20">
+                 {profile.firstName.charAt(0)}
+              </div>
+              <div>
+                 <p className="font-label text-[10px] font-black uppercase leading-tight">{profile.firstName}</p>
+                 <p className="font-label text-[8px] uppercase tracking-tighter text-tertiary">Administrador</p>
+              </div>
+           </div>
+        </div>
+      </aside>
+      
+      <main className="flex-1 flex flex-col h-full overflow-y-auto">
+        <header className="bg-surface sticky top-0 z-50 px-6 py-4 border-b border-outline-variant/15 flex justify-between items-center">
+           <h1 className="font-headline text-2xl font-black uppercase tracking-tighter">
+             {activeTab === 'overview' ? 'Panel de Control' : 
+              activeTab === 'users' ? 'Gestión de Socios' : 
+              activeTab === 'access' ? 'Scanner de Entrada' :
+              activeTab === 'classes' ? 'Agenda de Clases' :
+              activeTab === 'routines' ? 'Editor de Rutinas' :
+              'Finanzas'}
+           </h1>
+           <div className="w-10 h-10 rounded-sm bg-surface-container-high flex items-center justify-center font-label font-bold text-primary">
+              {profile.firstName.charAt(0)}{profile.lastName.charAt(0)}
+           </div>
+        </header>
+        <div className="p-6 md:p-10 flex flex-col gap-8 max-w-7xl mx-auto w-full">
+           {activeTab === 'overview' && <AdminOverview />}
 
-       <main className="min-h-[600px]">
-          <AnimatePresence mode="wait">
-             {activeTab === 'attendance' && (
-               <motion.div 
-                 key="attendance"
-                 initial={{ opacity: 0, y: 20 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 exit={{ opacity: 0, y: -20 }}
-                 className="space-y-8"
-               >
-                  <h2 className="font-headline text-3xl font-black uppercase tracking-tight italic">Socios en el Gimnasio ({attendees.length})</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {attendees.map(record => (
-                      <div key={record.id} className="bg-surface-container-low p-6 rounded-2xl border-l-4 border-primary ghost-border flex justify-between items-center group hover:bg-surface-container-high transition-colors">
-                        <div>
-                           <p className="font-headline text-xl font-black uppercase tracking-tight">{record.userName}</p>
-                           <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mt-1">Ingresó: {(record.checkIn?.toDate ? record.checkIn.toDate() : new Date(record.checkIn)).toLocaleTimeString()}</p>
-                        </div>
-                        <button 
-                          onClick={() => attendanceService.checkOut(record.userId, record.id).then(() => setAttendees(prev => prev.filter(a => a.id !== record.id)))}
-                          className="p-3 bg-surface-container-highest rounded-lg hover:text-error transition-colors material-symbols-outlined"
-                        >
-                          logout
-                        </button>
-                      </div>
-                    ))}
-                    {attendees.length === 0 && <p className="text-tertiary uppercase tracking-widest text-xs opacity-50">No hay socios activos en este momento.</p>}
-                  </div>
-               </motion.div>
-             )}
+           {activeTab === 'access' && (
 
-             {activeTab === 'users' && (
-               <motion.div 
-                 key="users"
-                 className="bg-surface-container-low rounded-3xl overflow-hidden ghost-border"
-               >
-                 <table className="w-full text-left">
-                   <thead className="bg-white/5 border-b border-white/10">
-                     <tr>
-                       <th className="p-6 font-label text-[10px] uppercase tracking-widest text-tertiary">Socio</th>
-                       <th className="p-6 font-label text-[10px] uppercase tracking-widest text-tertiary">Email</th>
-                       <th className="p-6 font-label text-[10px] uppercase tracking-widest text-tertiary">Resumen</th>
-                       <th className="p-6 font-label text-[10px] uppercase tracking-widest text-tertiary">Acción</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-white/5">
-                     {users.filter(u => u.role === 'socio').map(user => (
-                       <tr key={user.id} className="hover:bg-white/5 transition-colors">
-                         <td className="p-6 font-headline font-black uppercase tracking-tight text-lg italic">{user.firstName} {user.lastName}</td>
-                         <td className="p-6 font-mono text-xs text-tertiary">{user.email}</td>
-                         <td className="p-6">
-                            <span className={`px-3 py-1 rounded-full font-label text-[8px] uppercase font-black tracking-widest ${user.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-500'}`}>
-                              {user.status}
-                            </span>
-                         </td>
-                         <td className="p-6">
-                            {user.status === 'pending' && (
-                              <button 
-                                onClick={() => handleApproveUser(user.id!)}
-                                className="px-4 py-2 bg-primary text-white font-label text-[9px] font-black uppercase tracking-widest rounded hover:scale-105 transition-transform"
-                              >
-                                Aprobar
-                              </button>
-                            )}
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </motion.div>
-             )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+               <QRScanner />
+               <LiveAttendance />
+            </div>
+          )}
 
-             {activeTab === 'classes' && (
-               <motion.div 
-                 key="classes"
-                 initial={{ opacity: 0, scale: 0.98 }}
-                 animate={{ opacity: 1, scale: 1 }}
-               >
-                 <ClassScheduler instructorId={profile.email} />
-               </motion.div>
-             )}
-          </AnimatePresence>
-       </main>
+           {activeTab === 'users' && <UserManager />}
+
+           {activeTab === 'routines' && <RoutineEditor instructorId={profile.email} />}
+
+           {activeTab === 'classes' && <ClassScheduler instructorId={profile.email} />}
+
+           {activeTab === 'finance' && <FinanceManager />}
+        </div>
+      </main>
     </div>
   );
 }

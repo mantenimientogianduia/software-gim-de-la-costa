@@ -2,85 +2,71 @@ import { db } from '@/lib/firebase';
 import { 
   collection, 
   doc, 
-  setDoc, 
+  addDoc, 
   getDoc, 
   getDocs, 
   query, 
   where, 
   serverTimestamp, 
   updateDoc,
-  orderBy,
-  addDoc,
-  Timestamp,
-  limit
+  onSnapshot
 } from 'firebase/firestore';
 
 export interface AttendanceRecord {
   id?: string;
-  userId: string; // email
-  userName: string;
-  checkIn: any;
-  checkOut?: any;
+  userId: string;
+  checkInAt: any;
+  checkOutAt?: any;
   status: 'present' | 'completed';
 }
 
 export class AttendanceService {
-  private attendanceRef = collection(db, 'attendance');
+  private collectionRef = collection(db, 'attendance');
 
-  async checkIn(email: string, name: string): Promise<string> {
-    // Check if already checked in
-    const q = query(
-      this.attendanceRef, 
-      where('userId', '==', email), 
-      where('status', '==', 'present'),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (!snap.empty) return snap.docs[0].id;
-
-    const docRef = await addDoc(this.attendanceRef, {
-      userId: email,
-      userName: name,
-      checkIn: serverTimestamp(),
+  async checkIn(userId: string, userDocId: string): Promise<void> {
+    // 1. Create attendance record
+    await addDoc(this.collectionRef, {
+      userId,
+      checkInAt: serverTimestamp(),
       status: 'present'
     });
-    return docRef.id;
-  }
 
-  async checkOut(email: string, attendanceId?: string): Promise<void> {
-    let id = attendanceId;
-    
-    if (!id) {
-      const q = query(
-        this.attendanceRef, 
-        where('userId', '==', email), 
-        where('status', '==', 'present'),
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (snap.empty) return;
-      id = snap.docs[0].id;
-    }
-
-    const docRef = doc(this.attendanceRef, id);
-    await updateDoc(docRef, {
-      checkOut: serverTimestamp(),
-      status: 'completed'
+    // 2. Update user status
+    const userRef = doc(db, 'users', userDocId);
+    await updateDoc(userRef, {
+      atGym: true,
+      lastCheckIn: serverTimestamp(),
+      currentActivity: 'Entrenando',
+      updatedAt: serverTimestamp()
     });
   }
 
-  async getActiveUsers(): Promise<AttendanceRecord[]> {
-    const q = query(this.attendanceRef, where('status', '==', 'present'));
+  async checkOut(userId: string, userDocId: string): Promise<void> {
+    // 1. Find active record
+    const q = query(this.collectionRef, where('userId', '==', userId), where('status', '==', 'present'));
     const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    
+    for (const recordDoc of snap.docs) {
+      await updateDoc(recordDoc.ref, {
+        status: 'completed',
+        checkOutAt: serverTimestamp()
+      });
+    }
+
+    // 2. Update user status
+    const userRef = doc(db, 'users', userDocId);
+    await updateDoc(userRef, {
+      atGym: false,
+      currentActivity: '',
+      updatedAt: serverTimestamp()
+    });
   }
-  
-  async getDailyAttendance(): Promise<AttendanceRecord[]> {
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const q = query(this.attendanceRef, where('checkIn', '>=', Timestamp.fromDate(today)), orderBy('checkIn', 'desc'));
-      const snap = await getDocs(q);
-      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+
+  getLiveAttendance(callback: (users: any[]) => void) {
+    const q = query(collection(db, 'users'), where('atGym', '==', true));
+    return onSnapshot(q, (snap) => {
+      callback(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
   }
 }
 

@@ -1,14 +1,16 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- GLOBAL HELPERS (Phase 3) ---
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 3. Global Helpers
     function isSignedIn() { return request.auth != null; }
-    function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
-    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
-    function isUserEmail(email) { return isSignedIn() && request.auth.token.email == email; }
-    
-    // Bootstrap Admin: gino.pieretti00@gmail.com
+    function isEmailVerified() { return request.auth.token.email_verified == true; }
     function isAdmin() { 
       return isSignedIn() && (
         request.auth.token.email == 'gino.pieretti00@gmail.com' || 
@@ -16,121 +18,125 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
-    
-    function isInstructor() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'instructor';
+    function isProfesor() {
+      return isSignedIn() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'profesor';
     }
-
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
-
-    // --- DEFAULT DENY ---
-    match /{document=**} {
-      allow read, write: if false;
+    
+    // --- Training Plans & Pro Logic ---
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\.]+$'); 
     }
 
-    // --- USERS COLLECTION ---
+    // --- Users Collection ---
     match /users/{userId} {
-      allow get: if isSignedIn() && (isOwner(userId) || isAdmin() || isInstructor());
-      allow list: if isAdmin() || isInstructor(); // Only staff can browse users
-      
       function isValidUser(data) {
-        return data.email is string && data.email.size() <= 100 &&
-               data.role in ['admin', 'instructor', 'socio'] &&
+        return data.keys().hasAll(['email', 'role', 'firstName', 'lastName', 'status']) &&
+               data.email is string && data.email.size() <= 256 &&
+               data.role in ['admin', 'profesor', 'socio'] &&
+               data.firstName is string && data.firstName.size() <= 100 &&
+               data.lastName is string && data.lastName.size() <= 100 &&
                data.status in ['active', 'inactive', 'pending'] &&
-               (!('dni' in data) || (data.dni is string && data.dni.size() <= 20));
+               (!('atGym' in data) || data.atGym is bool) &&
+               (!('currentActivity' in data) || data.currentActivity is string);
       }
 
-      allow create: if isOwner(userId) && isValidUser(incoming()) && 
-                     incoming().role == 'socio' && incoming().status == 'pending' &&
-                     incoming().createdAt == request.time;
-      
-      allow update: if (isAdmin() && isValidUser(incoming())) || (
-        isOwner(userId) && 
-        isValidUser(incoming()) && 
-        incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'dni', 'updatedAt']) &&
-        incoming().updatedAt == request.time
+      allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin(); 
+
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && 
+                    incoming().email == request.auth.token.email &&
+                    (incoming().email == 'gino.pieretti00@gmail.com' ? 
+                      (incoming().role == 'admin' && incoming().status == 'active') : 
+                      (incoming().role == 'socio' && incoming().status == 'pending'));
+
+      allow update: if isSignedIn() && (
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'currentActivity', 'updatedAt']) && isValidUser(incoming())) ||
+        (isAdmin() && isValidUser(incoming())) ||
+        (isProfesor() && incoming().diff(existing()).affectedKeys().hasOnly(['atGym', 'currentActivity', 'lastCheckIn', 'updatedAt']) && isValidUser(incoming()))
       );
     }
 
-    // --- PAYMENTS ---
-    match /payments/{paymentId} {
-      allow get: if isSignedIn() && (isUserEmail(existing().userId) || isAdmin());
-      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.token.email);
-      
-      function isValidPayment(data) {
-        return data.userId is string && data.amount is number && data.amount > 0 &&
-               data.status in ['confirmed', 'pending', 'cancelled'] &&
-               data.createdAt == request.time;
-      }
-      
-      allow create: if isAdmin() && isValidPayment(incoming());
-      allow update: if isAdmin() && isValidPayment(incoming()) &&
-                     incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
-    }
-
-    // --- TRAINING PLANS ---
     match /training_plans/{planId} {
-      allow read: if isSignedIn(); // Templates are public for staff/members
-      
-      function isValidPlan(data) {
-        return data.title is string && data.title.size() <= 200 &&
-               data.type in ['template', 'assignment'] &&
-               data.status in ['draft', 'active', 'completed', 'archived'];
-      }
-
-      allow create: if (isAdmin() || isInstructor()) && isValidPlan(incoming());
-      allow update: if (isAdmin() || isInstructor()) && isValidPlan(incoming());
+      allow read: if isSignedIn() && (
+        isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email
+      );
+      allow create: if (isAdmin() || isProfesor()) && incoming().instructorId == request.auth.token.email;
+      allow update: if (isAdmin() || isProfesor()) && existing().instructorId == request.auth.token.email;
       allow delete: if isAdmin();
     }
 
-    // --- TRAINING WEEKS ---
     match /training_weeks/{weekId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isInstructor();
+      allow write: if isAdmin() || isProfesor();
     }
 
-    // --- WORKOUT SESSIONS ---
     match /workout_sessions/{sessionId} {
-      allow read: if isSignedIn() && (isUserEmail(resource.data.userId) || isAdmin() || isInstructor());
-      
-      function isValidSession(data) {
-        return data.userId is string && data.planId is string &&
-               data.exercises is list && data.exercises.size() <= 50;
+      allow read: if isSignedIn() && (isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email);
+      allow create: if isSignedIn() && incoming().userId == request.auth.token.email;
+      allow update: if isSignedIn() && existing().userId == request.auth.token.email;
+    }
+
+    match /exercises/{exId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isProfesor();
+    }
+
+    // Legacy Support (keeping for compatibility during transition)
+    match /routines/{routineId} {
+      function isValidRoutine(data) {
+        return data.userId is string && data.instructorId is string &&
+               data.title is string && data.title.size() <= 200 &&
+               data.exercises is list && data.exercises.size() <= 50 &&
+               data.exercises[0].name is string; // Basic type check for first element
       }
 
-      allow create: if isSignedIn() && isUserEmail(incoming().userId) && isValidSession(incoming());
+      allow read: if isSignedIn() && (
+        isAdmin() || 
+        isProfesor() || 
+        resource.data.userId == request.auth.token.email // Socio reads their assigned routines
+      );
+
+      allow create: if (isAdmin() || isProfesor()) && isValidRoutine(incoming());
+      
+      allow update: if (isAdmin() || isProfesor()) && 
+                    isValidRoutine(incoming()) && 
+                    incoming().instructorId == existing().instructorId; // Keep owner integrity
+      
+      allow delete: if isAdmin();
     }
 
-    // --- CLASSES & BOOKINGS ---
+    // --- Classes Collection ---
     match /classes/{classId} {
+      function isValidClass(data) {
+        return data.title is string && data.capacity is int && data.capacity > 0;
+      }
+
       allow read: if isSignedIn();
-      allow write: if isAdmin() || isInstructor();
+      allow write: if isAdmin() || isProfesor();
     }
 
+    // --- Bookings Collection ---
     match /bookings/{bookingId} {
-      allow read: if isSignedIn() && (isUserEmail(resource.data.userId) || isAdmin() || isInstructor());
-      
-      allow create: if isSignedIn() && isUserEmail(incoming().userId) && 
-                     exists(/databases/$(database)/documents/classes/$(incoming().classId));
-      
-      allow update: if isAdmin() || (isUserEmail(existing().userId) && incoming().status == 'cancelled');
+      allow read: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.token.email);
+      allow create: if isSignedIn() && incoming().userId == request.auth.token.email &&
+                    existsAfter(/databases/$(database)/documents/classes/$(incoming().classId)); 
+      allow update, delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.token.email);
     }
 
-    // --- ACCESS/ATTENDANCE ---
+    // --- Attendance Collection ---
     match /attendance/{attendanceId} {
-      allow read: if isAdmin() || isInstructor() || (isSignedIn() && isUserEmail(resource.data.userId));
-      allow create: if isAdmin(); // Check-in is handled by local machine/admin
-      allow update: if isAdmin() || (isSignedIn() && isUserEmail(existing().userId) && 
-                                     incoming().diff(existing()).affectedKeys().hasOnly(['checkOut', 'status']));
-    }
-
-    // --- EXERCISES MASTER ---
-    match /exercises/{exerciseId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin() || isInstructor();
+      function isValidAttendance(data) {
+        return data.userId is string && 
+               data.status in ['present', 'completed'] &&
+               data.checkInAt is timestamp;
+      }
+      allow read: if isSignedIn() && (isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email);
+      allow create: if isAdmin() || isProfesor();
+      allow update: if (isAdmin() || isProfesor()) && isValidAttendance(incoming());
     }
   }
 }

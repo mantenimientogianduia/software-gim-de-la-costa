@@ -8,75 +8,101 @@ import {
   query, 
   where, 
   serverTimestamp, 
-  updateDoc,
-  orderBy,
-  addDoc,
-  Timestamp,
+  updateDoc, 
+  increment,
   runTransaction
 } from 'firebase/firestore';
 import { z } from 'zod';
 
-export const GymClassSchema = z.object({
+export const ClassSchema = z.object({
   id: z.string().optional(),
-  title: z.string(),
-  instructorId: z.string(),
-  startTime: z.any(),
-  endTime: z.any().optional(),
-  capacity: z.number().default(20),
+  title: z.string().min(3, 'Mínimo 3 caracteres'),
+  instructorId: z.string().min(1, 'Instructor requerido'),
+  startTime: z.any(), // Firestore Timestamp
+  endTime: z.any(),
+  capacity: z.number().min(1, 'Capacidad debe ser al menos 1'),
   enrolledCount: z.number().default(0),
-  status: z.enum(['scheduled', 'cancelled', 'completed']).default('scheduled'),
+  status: z.enum(['active', 'cancelled']).default('active'),
+  createdAt: z.any().optional(),
 });
 
 export const BookingSchema = z.object({
   id: z.string().optional(),
-  classId: z.string(),
-  userId: z.string(), // user email
+  classId: z.string().min(1),
+  userId: z.string().min(1), // user email
   status: z.enum(['confirmed', 'cancelled']).default('confirmed'),
   createdAt: z.any().optional(),
 });
 
-export type GymClass = z.infer<typeof GymClassSchema>;
+export type GymClass = z.infer<typeof ClassSchema>;
 export type Booking = z.infer<typeof BookingSchema>;
 
 export class ClassService {
   private classesRef = collection(db, 'classes');
   private bookingsRef = collection(db, 'bookings');
 
-  async createClass(classData: Omit<GymClass, 'id'>): Promise<string> {
-    const docRef = await addDoc(this.classesRef, classData);
-    return docRef.id;
+  async createClass(data: Omit<GymClass, 'id' | 'enrolledCount' | 'createdAt'>): Promise<string> {
+    const newDoc = doc(this.classesRef);
+    await setDoc(newDoc, {
+      ...data,
+      enrolledCount: 0,
+      createdAt: serverTimestamp(),
+    });
+    return newDoc.id;
+  }
+
+  async createRecurringClasses(
+    data: Omit<GymClass, 'id' | 'enrolledCount' | 'createdAt' | 'startTime' | 'endTime'>,
+    pattern: {
+      days: number[]; // 0 for Sunday, 1 for Monday...
+      startTimeStr: string; // "20:00"
+      durationMin: number;
+    },
+    weeksCount: number = 4
+  ): Promise<void> {
+    const now = new Date();
+    
+    for (let i = 0; i < weeksCount; i++) {
+       for (const day of pattern.days) {
+          const date = new Date();
+          date.setDate(now.getDate() + (i * 7) + (day - now.getDay()));
+          
+          const [hours, minutes] = pattern.startTimeStr.split(':').map(Number);
+          date.setHours(hours, minutes, 0, 0);
+
+          if (date < now) continue;
+
+          const endTime = new Date(date);
+          endTime.setMinutes(date.getMinutes() + pattern.durationMin);
+
+          await this.createClass({
+            ...data,
+            startTime: date,
+            endTime: endTime,
+          });
+       }
+    }
   }
 
   async getActiveClasses(): Promise<GymClass[]> {
-    const now = new Date();
-    const q = query(
-      this.classesRef, 
-      where('startTime', '>=', Timestamp.fromDate(now)),
-      where('status', '==', 'scheduled'),
-      orderBy('startTime', 'asc')
-    );
+    const q = query(this.classesRef, where('status', '==', 'active'));
     const snap = await getDocs(q);
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as GymClass));
   }
 
-  async bookClass(classId: string, userId: string): Promise<string> {
+  async bookClass(classId: string, userId: string): Promise<void> {
     const classRef = doc(this.classesRef, classId);
-    
-    return await runTransaction(db, async (transaction) => {
-      const classSnap = await transaction.get(classRef);
-      if (!classSnap.exists()) throw new Error('La clase no existe.');
+    const bookingRef = doc(this.bookingsRef);
+
+    await runTransaction(db, async (transaction) => {
+      const classDoc = await transaction.get(classRef);
+      if (!classDoc.exists()) throw new Error('Clase no encontrada');
       
-      const gymClass = classSnap.data() as GymClass;
-      if (gymClass.enrolledCount >= gymClass.capacity) {
-        throw new Error('La clase está llena.');
+      const classData = classDoc.data() as GymClass;
+      if (classData.enrolledCount >= classData.capacity) {
+        throw new Error('Clase completa');
       }
 
-      // Check if already booked
-      const bookingQ = query(this.bookingsRef, where('classId', '==', classId), where('userId', '==', userId), where('status', '==', 'confirmed'));
-      const bookingSnap = await getDocs(bookingQ);
-      if (!bookingSnap.empty) throw new Error('Ya tienes un lugar en esta clase.');
-
-      const bookingRef = doc(this.bookingsRef);
       transaction.set(bookingRef, {
         classId,
         userId,
@@ -85,10 +111,8 @@ export class ClassService {
       });
 
       transaction.update(classRef, {
-        enrolledCount: gymClass.enrolledCount + 1
+        enrolledCount: increment(1)
       });
-
-      return bookingRef.id;
     });
   }
 
@@ -96,6 +120,16 @@ export class ClassService {
     const q = query(this.bookingsRef, where('userId', '==', userId), where('status', '==', 'confirmed'));
     const snap = await getDocs(q);
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+  }
+
+  async cancelBooking(bookingId: string, classId: string): Promise<void> {
+    const bookingRef = doc(this.bookingsRef, bookingId);
+    const classRef = doc(this.classesRef, classId);
+
+    await runTransaction(db, async (transaction) => {
+      transaction.update(bookingRef, { status: 'cancelled' });
+      transaction.update(classRef, { enrolledCount: increment(-1) });
+    });
   }
 }
 

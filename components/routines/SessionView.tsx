@@ -3,13 +3,12 @@ import { useState } from 'react';
 import { UserProfile, userService } from '@/services/user.service';
 import { attendanceService } from '@/services/attendance.service';
 import SocioRoutineView from '@/components/routines/SocioRoutineView';
-import { motion } from 'motion/react';
 
 export default function SessionView({ profile }: { profile: UserProfile }) {
   const [loading, setLoading] = useState(false);
 
   const handleManualCheckout = async () => {
-    if (!window.confirm('¿Deseas finalizar tu sesión de entrenamiento actual?')) return;
+    if (!window.confirm('¿Estás seguro de que deseas finalizar tu sesión de entrenamiento?')) return;
     
     setLoading(true);
     try {
@@ -26,35 +25,28 @@ export default function SessionView({ profile }: { profile: UserProfile }) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12 space-y-12">
-      <div className="bg-primary/10 p-12 rounded-[3.5rem] border border-primary/20 relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-8">
-         {/* Animated BG */}
-         <div className="absolute inset-0 pointer-events-none opacity-30">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary blur-[120px] animate-pulse"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-tertiary blur-[100px]"></div>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-primary/10 p-8 rounded-[2rem] border border-primary/20 shadow-[0_0_40px_rgba(255,87,34,0.1)] relative overflow-hidden">
+         <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+            <div className="absolute top-0 left-10 w-20 h-20 bg-primary/20 blur-[60px]"></div>
          </div>
-         
-         <div className="relative z-10 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
-               <div className="w-3 h-3 rounded-full bg-primary animate-ping"></div>
-               <span className="font-label text-[10px] font-black uppercase tracking-[0.4em] text-primary">Sesión en Curso</span>
+         <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-2">
+               <div className="w-2 h-2 rounded-full bg-primary animate-ping"></div>
+               <span className="font-label text-[10px] font-black uppercase tracking-[0.3em] text-primary">Estás en el gimnasio</span>
             </div>
-            <h2 className="font-headline text-6xl md:text-8xl font-black uppercase tracking-tighter text-on-surface italic leading-none mb-4">MODO <br/> ENTRENAMIENTO</h2>
-            <p className="font-body text-tertiary uppercase tracking-widest font-light text-sm opacity-60">Enfócate en tu rendimiento. El tiempo es oro.</p>
+            <h2 className="font-headline text-5xl font-black uppercase tracking-tighter text-on-surface italic leading-none">MODO ENTRENAMIENTO</h2>
          </div>
-
          <button 
            onClick={handleManualCheckout}
            disabled={loading}
-           className="relative z-10 px-10 py-4 bg-surface-container-highest rounded-2xl font-label text-[10px] font-black uppercase tracking-widest hover:bg-error hover:text-white transition-all border border-white/5 active:scale-95"
+           className="relative z-10 px-8 py-3 bg-surface-container-highest rounded-xl font-label text-[10px] font-black uppercase tracking-widest hover:bg-error/10 hover:text-error transition-all border border-outline-variant/10"
          >
-           {loading ? 'Saliendo...' : 'Finalizar Sesión'}
+           {loading ? 'Saliendo...' : 'Forzar Salida'}
          </button>
       </div>
 
-      <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000">
-         <SocioRoutineView userId={profile.email} />
-      </div>
+      <SocioRoutineView userId={profile.email} />
     </div>
   );
 }
