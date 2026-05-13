@@ -104,14 +104,21 @@ export class StatsService {
 
     const q = query(
       this.attendanceRef,
-      where('userId', '==', userId),
-      where('checkInAt', '>=', Timestamp.fromDate(fourWeeksAgo))
+      where('userId', '==', userId)
     );
 
     const snap = await getDocs(q);
+    const fourWeeksAgoMillis = fourWeeksAgo.getTime();
+
+    // Filter in memory to avoid composite index requirement
+    const relevantDocs = snap.docs.filter(doc => {
+      const data = doc.data();
+      return data.checkInAt && (data.checkInAt as Timestamp).toMillis() >= fourWeeksAgoMillis;
+    });
+
     // Count unique days
     const uniqueDays = new Set();
-    snap.docs.forEach(doc => {
+    relevantDocs.forEach(doc => {
       const date = (doc.data().checkInAt as Timestamp).toDate();
       uniqueDays.add(date.toDateString());
     });

@@ -43,16 +43,23 @@ export class StreakService {
 
     const q = query(
       this.attendanceRef,
-      where('userId', '==', userId),
-      where('checkInAt', '>=', Timestamp.fromDate(startDate))
+      where('userId', '==', userId)
     );
 
     const snap = await getDocs(q);
-    const docs = snap.docs.sort((a, b) => {
-      const dateA = (a.data().checkInAt as Timestamp).toMillis();
-      const dateB = (b.data().checkInAt as Timestamp).toMillis();
-      return dateB - dateA;
-    });
+    const startDateMillis = startDate.getTime();
+
+    const docs = snap.docs
+      .filter(doc => {
+        const data = doc.data();
+        if (!data.checkInAt) return false;
+        return (data.checkInAt as Timestamp).toMillis() >= startDateMillis;
+      })
+      .sort((a, b) => {
+        const dateA = (a.data().checkInAt as Timestamp).toMillis();
+        const dateB = (b.data().checkInAt as Timestamp).toMillis();
+        return dateB - dateA;
+      });
 
     const workoutDates = new Set<string>();
     
