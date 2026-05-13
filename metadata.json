@@ -1,6 +1,6 @@
 {
-  "name": "Gym De La Costa",
-  "description": "Sistema de gestión integral para el Gym De La Costa, incluyendo socios, pagos, rutinas y reserva de clases.",
+  "name": "Gym De La Costa - Training Tools",
+  "description": "Sistema de gestión integral para el Gym De La Costa, ahora incluyendo una herramienta avanzada de cronómetro para entrenamientos (series, descansos y circuitos).",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
