@@ -43,7 +43,8 @@ export default function DashboardPage() {
   const isDev = user.email === DEV_EMAIL;
 
   const renderDashboard = () => {
-    const dashboardProfile = { ...profile, role: activeRole };
+    if (!profile || !user) return null;
+    const dashboardProfile = { ...profile, id: user.uid, role: activeRole };
 
     switch (activeRole) {
       case 'admin':
