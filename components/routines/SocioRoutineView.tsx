@@ -14,39 +14,35 @@ export default function SocioRoutineView({ userId }: { userId: string }) {
   const [sessionResults, setSessionResults] = useState<any[]>([]);
 
   useEffect(() => {
-    let isMounted = true;
     async function loadData() {
-      if (!userId) return;
       try {
-        setLoading(true);
         const plan = await routineService.getUserActivePlan(userId);
-        if (plan && isMounted) {
+        if (plan) {
           setActivePlan(plan);
           const weeksData = await routineService.getPlanWeeks(plan.id!);
-          if (isMounted) {
-            setWeeks(weeksData);
-            setActiveWeekIdx(0);
-            setActiveDayIdx(0);
-            
-            // Init empty results for the active day
-            const day = weeksData[0]?.days[0];
-            if (day) {
-              const initialResults = day.blocks.flatMap(b => b.exercises.map(ex => ({
-                name: ex.name,
-                sets: Array(ex.prescribed.sets).fill(null).map(() => ({ reps: 0, weight: 0, rpe: 0 }))
-              })));
-              setSessionResults(initialResults);
-            }
+          setWeeks(weeksData);
+          
+          // Basic auto-selection: find current day if possible, or default to 0
+          setActiveWeekIdx(0);
+          setActiveDayIdx(0);
+          
+          // Init empty results for the active day
+          const day = weeksData[0]?.days[0];
+          if (day) {
+            const initialResults = day.blocks.flatMap(b => b.exercises.map(ex => ({
+              name: ex.name,
+              sets: Array(ex.prescribed.sets).fill({ reps: 0, weight: 0, rpe: 0 })
+            })));
+            setSessionResults(initialResults);
           }
         }
       } catch (err) {
         console.error(err);
       } finally {
-        if (isMounted) setLoading(false);
+        setLoading(false);
       }
     }
     loadData();
-    return () => { isMounted = false; };
   }, [userId]);
 
   const updateSetResult = (exIdx: number, setIdx: number, field: string, value: number) => {
