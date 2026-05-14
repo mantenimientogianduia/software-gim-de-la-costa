@@ -13,7 +13,7 @@ export default function StudentDirectory({ onSelectStudent }: { onSelectStudent:
       try {
         const data = await userService.getAllUsers();
         // Filter to only show members/students
-        setStudents(data.filter(u => u.role === 'member'));
+        setStudents(data.filter(u => u.role === 'socio'));
       } catch (error) {
         console.error('Error loading students:', error);
       } finally {

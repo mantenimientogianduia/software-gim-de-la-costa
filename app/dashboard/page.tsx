@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { auth } from '@/app/firebase';
+import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { userService, UserProfile } from '@/services/user.service';
 import SocioDashboard from '@/components/dashboards/SocioDashboard';

@@ -27,7 +27,13 @@ export default function LoginPage() {
       if (!profile) {
         if (isAdminEmail) {
           // Admin doesn't necessarily need DNI immediately or can have a dummy one
-          await userService.createUserProfile(user.uid, user.email || '', 'Admin', 'Costa', 'admin', '00000000');
+          await userService.createUserProfile(user.uid, {
+            email: user.email || '',
+            firstName: 'Admin',
+            lastName: 'Costa',
+            role: 'admin',
+            dni: '00000000'
+          });
           router.push('/dashboard');
           return;
         }
@@ -59,14 +65,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const nameParts = pendingUser.displayName?.split(' ') || ['Nuevo', 'Socio'];
-      await userService.createUserProfile(
-        pendingUser.uid,
-        pendingUser.email || '',
-        nameParts[0],
-        nameParts.slice(1).join(' '),
-        'socio',
-        dniInput
-      );
+      await userService.createUserProfile(pendingUser.uid, {
+        email: pendingUser.email || '',
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(' '),
+        role: 'socio',
+        dni: dniInput
+      });
       setNeedsDni(false);
       setIsPending(true);
     } catch (err: any) {

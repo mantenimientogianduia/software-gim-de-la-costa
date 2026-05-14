@@ -35,14 +35,13 @@ export default function UserManager() {
     setLoading(true);
     try {
       const tempId = `temp_${Date.now()}`;
-      await userService.createUserProfile(
-        tempId,
-        newUserData.email,
-        newUserData.firstName,
-        newUserData.lastName,
-        newUserData.role,
-        newUserData.dni
-      );
+      await userService.createUserProfile(tempId, {
+        email: newUserData.email,
+        firstName: newUserData.firstName,
+        lastName: newUserData.lastName,
+        role: newUserData.role,
+        dni: newUserData.dni
+      });
       await userService.updateUserStatus(tempId, 'active');
       
       setIsCreating(false);

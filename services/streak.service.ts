@@ -6,7 +6,7 @@ import {
   Timestamp,
   orderBy
 } from 'firebase/firestore';
-import { db } from '@/app/firebase';
+import { db } from '@/lib/firebase';
 
 export interface StreakData {
   currentStreak: number;
@@ -16,7 +16,7 @@ export interface StreakData {
 }
 
 class StreakService {
-  async getStreakData(userEmail: string): Promise<StreakData> {
+  async getStreakData(userEmail: string, daysWindow: number = 30, weeklyGoal: number = 3): Promise<StreakData> {
     const checkinsRef = collection(db, 'checkins');
     const q = query(
       checkinsRef,

@@ -192,7 +192,13 @@ export default function SeedPage() {
       ];
 
       for (const socio of mockSocios) {
-        await userService.createUserProfile(socio.id, socio.email, socio.firstName, socio.lastName, 'socio', socio.dni);
+        await userService.createUserProfile(socio.id, {
+          email: socio.email,
+          firstName: socio.firstName,
+          lastName: socio.lastName,
+          role: 'socio',
+          dni: socio.dni
+        });
         // Force status to active for testing
         await userService.updateUserStatus(socio.id, 'active');
         addLog(`Socio creado: ${socio.firstName} ${socio.lastName} (${socio.email})`);
