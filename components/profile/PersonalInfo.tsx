@@ -9,6 +9,10 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
     firstName: profile.firstName || '',
     lastName: profile.lastName || '',
     weight: profile.weight || 0,
+    height: profile.height || 0,
+    gender: profile.gender || 'otro',
+    otherSports: profile.otherSports || '',
+    fitnessLevel: profile.fitnessLevel || 'principiante',
     goals: profile.goals || '',
     weeklyTrainingGoal: profile.weeklyTrainingGoal || 3,
     currentPlan: profile.currentPlan || 'Básico',
@@ -24,8 +28,6 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
       await userService.updatePersonalInfo(profile.id, formData);
       setSuccess(true);
       setIsEditing(false);
-      // We rely on the parent or a refresh to update the profile UI if needed, 
-      // but for simplicity in this demo we just show success.
     } catch (error) {
       console.error('Error updating profile:', error);
     } finally {
@@ -85,6 +87,33 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
                 required
               />
             </div>
+            
+            <div className="flex flex-col gap-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Sexo</label>
+              <select 
+                value={formData.gender}
+                onChange={(e) => setFormData({...formData, gender: e.target.value as any})}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+              >
+                <option value="masculino">Masculino</option>
+                <option value="femenino">Femenino</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Nivel de Condición Física</label>
+              <select 
+                value={formData.fitnessLevel}
+                onChange={(e) => setFormData({...formData, fitnessLevel: e.target.value as any})}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+              >
+                <option value="principiante">Principiante</option>
+                <option value="intermedio">Intermedio</option>
+                <option value="avanzado">Avanzado</option>
+              </select>
+            </div>
+
             <div className="flex flex-col gap-2">
               <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Peso (kg)</label>
               <input 
@@ -94,6 +123,17 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
                 className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
               />
             </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Altura (cm)</label>
+              <input 
+                type="number" 
+                value={formData.height}
+                onChange={(e) => setFormData({...formData, height: Number(e.target.value)})}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+              />
+            </div>
+
             <div className="flex flex-col gap-2">
               <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Meta Semanal (días)</label>
               <input 
@@ -105,6 +145,18 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
                 className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
               />
             </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">¿Práctica otro deporte?</label>
+              <input 
+                type="text" 
+                value={formData.otherSports}
+                onChange={(e) => setFormData({...formData, otherSports: e.target.value})}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+                placeholder="Ej: Fútbol, Tenis, Natación..."
+              />
+            </div>
+
             <div className="flex flex-col gap-2 md:col-span-2">
               <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Objetivos</label>
               <textarea 
@@ -132,59 +184,86 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
             </div>
           </form>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined">badge</span>
-                </div>
-                <div>
-                  <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Nombre Completo</p>
-                  <p className="font-headline font-bold text-sm uppercase">{profile.firstName} {profile.lastName}</p>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">badge</span>
               </div>
-
-              <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined">weight</span>
-                </div>
-                <div>
-                  <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Peso Actual</p>
-                  <p className="font-headline font-bold text-sm uppercase">{profile.weight || 0} KG</p>
-                </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Nombre Completo</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.firstName} {profile.lastName}</p>
               </div>
             </div>
 
-            <div className="space-y-6">
-              <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined">event_repeat</span>
-                </div>
-                <div>
-                  <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Meta Semanal</p>
-                  <p className="font-headline font-bold text-sm uppercase">{profile.weeklyTrainingGoal || 3} DÍAS / SEMANA</p>
-                </div>
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">wc</span>
               </div>
-
-              <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined">card_membership</span>
-                </div>
-                <div>
-                  <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Plan Actual</p>
-                  <p className="font-headline font-bold text-sm uppercase">{profile.currentPlan || 'Básico'}</p>
-                </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Sexo</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.gender || 'OTRO'}</p>
               </div>
             </div>
 
-            <div className="md:col-span-2 p-6 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-               <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-xs">flag</span>
-                Objetivos de Entrenamiento
-               </p>
-               <p className="font-body text-sm text-tertiary leading-relaxed italic">
-                {profile.goals || 'Sin objetivos definidos. Edita tu perfil para agregarlos.'}
-               </p>
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">height</span>
+              </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Altura</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.height || 0} CM</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">weight</span>
+              </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Peso Actual</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.weight || 0} KG</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">fitness_center</span>
+              </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Meta Semanal</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.weeklyTrainingGoal || 3} DÍAS</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">sports_score</span>
+              </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Meta Semanal</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.fitnessLevel || 'PRINCIPIANTE'}</p>
+              </div>
+            </div>
+
+            <div className="md:col-span-3 p-6 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 flex flex-col md:flex-row gap-8">
+              <div className="flex-1">
+                 <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-xs">flag</span>
+                  Objetivos
+                 </p>
+                 <p className="font-body text-sm text-tertiary leading-relaxed italic">
+                  {profile.goals || 'Sin objetivos definidos.'}
+                 </p>
+              </div>
+              <div className="flex-1">
+                 <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-xs">sports_handball</span>
+                  Otros Deportes
+                 </p>
+                 <p className="font-body text-sm text-tertiary leading-relaxed italic">
+                  {profile.otherSports || 'No práctica otros deportes.'}
+                 </p>
+              </div>
             </div>
           </div>
         )}
