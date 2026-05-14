@@ -64,4 +64,22 @@ describe('IntervalService', () => {
     const state = service.getState();
     expect(state.phase).toBe(WorkoutPhase.FINISHED);
   });
+
+  it('should call audio service on transitions and finish', () => {
+    const mockAudio = { playFinish: vi.fn(), playBeep: vi.fn(), playTransition: vi.fn() };
+    const service = new IntervalService({ rounds: 1, workMs: 1000, restMs: 500 }, undefined, mockAudio);
+    service.start();
+    
+    // Prep -> Work
+    vi.advanceTimersByTime(5000);
+    expect(mockAudio.playTransition).toHaveBeenCalled();
+    
+    // Work -> Rest
+    vi.advanceTimersByTime(1000);
+    expect(mockAudio.playTransition).toHaveBeenCalled();
+    
+    // Rest -> Finish
+    vi.advanceTimersByTime(500);
+    expect(mockAudio.playFinish).toHaveBeenCalled();
+  });
 });

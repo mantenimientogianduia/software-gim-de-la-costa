@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { CountdownService, CountdownState } from '@/services/CountdownService';
+import { defaultAudioService } from '@/services/AudioService';
 
 export function useCountdown(initialMs: number) {
   const [state, setState] = useState<CountdownState>({
@@ -15,7 +16,7 @@ export function useCountdown(initialMs: number) {
 
   const init = useCallback((ms: number) => {
     if (serviceRef.current) serviceRef.current.cleanup();
-    serviceRef.current = new CountdownService(ms, (s) => setState({ ...s }));
+    serviceRef.current = new CountdownService(ms, (s) => setState({ ...s }), defaultAudioService);
     setState(serviceRef.current.getState());
   }, []);
 

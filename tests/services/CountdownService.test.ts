@@ -43,4 +43,12 @@ describe('CountdownService', () => {
     expect(service.getState().timeLeftMs).toBe(1000);
     expect(service.getState().isRunning).toBe(false);
   });
+
+  it('should call playFinish on audio service when it ends', () => {
+    const mockAudio = { playFinish: vi.fn(), playBeep: vi.fn(), playTransition: vi.fn() };
+    const service = new CountdownService(1000, undefined, mockAudio);
+    service.start();
+    vi.advanceTimersByTime(1000);
+    expect(mockAudio.playFinish).toHaveBeenCalled();
+  });
 });

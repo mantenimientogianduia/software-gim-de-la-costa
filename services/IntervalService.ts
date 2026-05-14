@@ -1,3 +1,5 @@
+import { IAudioService } from './AudioService';
+
 export enum WorkoutPhase {
   PREPARE = 'PREPARE',
   WORK = 'WORK',
@@ -27,11 +29,13 @@ export class IntervalService {
   private isRunning: boolean = false;
   private intervalId: any = null;
   private onUpdate?: (state: IntervalState) => void;
+  private audioService?: IAudioService;
 
-  constructor(config: IntervalConfig, onUpdate?: (state: IntervalState) => void) {
+  constructor(config: IntervalConfig, onUpdate?: (state: IntervalState) => void, audioService?: IAudioService) {
     this.config = config;
     this.timeLeftMs = config.prepareMs ?? 5000;
     this.onUpdate = onUpdate;
+    this.audioService = audioService;
   }
 
   start(): void {
@@ -58,6 +62,12 @@ export class IntervalService {
 
   private tick(): void {
     this.timeLeftMs -= 100;
+    
+    // Warning beeps in the last 3 seconds of a phase
+    if (this.timeLeftMs > 0 && this.timeLeftMs <= 3000 && this.timeLeftMs % 1000 === 0) {
+      this.audioService?.playTransition();
+    }
+
     if (this.timeLeftMs <= 0) {
       this.transition();
     }
@@ -69,11 +79,13 @@ export class IntervalService {
       case WorkoutPhase.PREPARE:
         this.phase = WorkoutPhase.WORK;
         this.timeLeftMs = this.config.workMs;
+        this.audioService?.playTransition();
         break;
       
       case WorkoutPhase.WORK:
         this.phase = WorkoutPhase.REST;
         this.timeLeftMs = this.config.restMs;
+        this.audioService?.playTransition();
         break;
 
       case WorkoutPhase.REST:
@@ -81,10 +93,12 @@ export class IntervalService {
           this.currentRound++;
           this.phase = WorkoutPhase.WORK;
           this.timeLeftMs = this.config.workMs;
+          this.audioService?.playTransition();
         } else {
           this.phase = WorkoutPhase.FINISHED;
           this.timeLeftMs = 0;
           this.pause();
+          this.audioService?.playFinish();
         }
         break;
       

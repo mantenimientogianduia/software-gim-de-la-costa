@@ -1,3 +1,5 @@
+import { IAudioService } from './AudioService';
+
 export interface CountdownState {
   timeLeftMs: number;
   isRunning: boolean;
@@ -12,11 +14,13 @@ export class CountdownService {
   private isFinished: boolean = false;
   private intervalId: any = null;
   private onUpdate?: (state: CountdownState) => void;
+  private audioService?: IAudioService;
 
-  constructor(initialMs: number, onUpdate?: (state: CountdownState) => void) {
+  constructor(initialMs: number, onUpdate?: (state: CountdownState) => void, audioService?: IAudioService) {
     this.timeLeftMs = initialMs;
     this.totalTimeMs = initialMs;
     this.onUpdate = onUpdate;
+    this.audioService = audioService;
   }
 
   start(): void {
@@ -54,6 +58,7 @@ export class CountdownService {
       this.timeLeftMs = 0;
       this.isFinished = true;
       this.pause();
+      this.audioService?.playFinish();
     }
     
     this.notify();

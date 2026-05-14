@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { IntervalService, IntervalConfig, IntervalState, WorkoutPhase } from '@/services/IntervalService';
+import { defaultAudioService } from '@/services/AudioService';
 
 export function useIntervalWorkout(config: IntervalConfig | null) {
   const [state, setState] = useState<IntervalState | null>(null);
@@ -12,7 +13,7 @@ export function useIntervalWorkout(config: IntervalConfig | null) {
     
     const service = new IntervalService(newConfig, (s) => {
       setState({ ...s });
-    });
+    }, defaultAudioService);
     serviceRef.current = service;
     setState(service.getState());
   }, []);
