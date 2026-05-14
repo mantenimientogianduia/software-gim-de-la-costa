@@ -117,7 +117,7 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
               <header className="flex justify-between items-end mb-12">
                 <div>
                   <h1 className="font-headline font-black text-4xl md:text-6xl tracking-tight uppercase mb-2">
-                    ¿{profile.gender === 'femenino' ? 'Lista' : 'Listo'}, <span className="text-primary-container">{profile.firstName}</span>?
+                    ¿{profile.gender === 'femenino' ? 'Lista' : 'Listo'} para entrenar, <span className="text-primary-container">{profile.firstName}</span>?
                   </h1>
                   <p className="font-body text-tertiary text-lg uppercase tracking-widest">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                 </div>

@@ -25,7 +25,7 @@ export default function DashboardPage() {
     if (!loading && profile && profile.status === 'pending' && profile.role !== 'admin' && user?.email !== DEV_EMAIL) {
       router.push('/login');
     }
-  }, [user, profile, loading, router]);
+  }, [user, profile?.status, loading, router]);
 
   if (loading) {
     return (
@@ -42,9 +42,14 @@ export default function DashboardPage() {
   const activeRole = overrideRole || (profile.role as UserRole);
   const isDev = user.email === DEV_EMAIL;
 
+  const dashboardProfile = useMemo(() => ({
+    ...profile,
+    id: user.uid,
+    role: activeRole
+  }), [profile, user.uid, activeRole]);
+
   const renderDashboard = () => {
     if (!profile || !user) return null;
-    const dashboardProfile = { ...profile, id: user.uid, role: activeRole };
 
     switch (activeRole) {
       case 'admin':

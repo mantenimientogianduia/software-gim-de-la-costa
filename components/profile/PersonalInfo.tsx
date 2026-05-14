@@ -12,6 +12,9 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
     height: profile.height || 0,
     gender: profile.gender || 'otro',
     otherSports: profile.otherSports || '',
+    injuries: profile.injuries || '',
+    medications: profile.medications || '',
+    isSmoker: profile.isSmoker || false,
     fitnessLevel: profile.fitnessLevel || 'principiante',
     goals: profile.goals || '',
     weeklyTrainingGoal: profile.weeklyTrainingGoal || 3,
@@ -157,6 +160,40 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
               />
             </div>
 
+            <div className="flex flex-col gap-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Fumador/a</label>
+              <select 
+                value={formData.isSmoker ? 'si' : 'no'}
+                onChange={(e) => setFormData({...formData, isSmoker: e.target.value === 'si'})}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+              >
+                <option value="no">No</option>
+                <option value="si">Sí</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Lesiones / Dolores</label>
+              <input 
+                type="text" 
+                value={formData.injuries}
+                onChange={(e) => setFormData({...formData, injuries: e.target.value})}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+                placeholder="Ej: Hernia de disco, dolor de rodilla..."
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Medicamentos</label>
+              <input 
+                type="text" 
+                value={formData.medications}
+                onChange={(e) => setFormData({...formData, medications: e.target.value})}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+                placeholder="Ej: Ibuprofeno crónico, etc..."
+              />
+            </div>
+
             <div className="flex flex-col gap-2 md:col-span-2">
               <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Objetivos</label>
               <textarea 
@@ -242,6 +279,36 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
               <div>
                 <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Meta Semanal</p>
                 <p className="font-headline font-bold text-sm uppercase">{profile.fitnessLevel || 'PRINCIPIANTE'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">smoking_rooms</span>
+              </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Fumador/a</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.isSmoker ? 'SÍ' : 'NO'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">healing</span>
+              </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Lesiones</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.injuries || 'NINGUNA'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">medication</span>
+              </div>
+              <div>
+                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Medicación</p>
+                <p className="font-headline font-bold text-sm uppercase">{profile.medications || 'NINGUNA'}</p>
               </div>
             </div>
 
