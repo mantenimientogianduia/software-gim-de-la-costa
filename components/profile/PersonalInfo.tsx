@@ -12,8 +12,6 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
     goals: profile.goals || '',
     weeklyTrainingGoal: profile.weeklyTrainingGoal || 3,
     currentPlan: profile.currentPlan || 'Básico',
-    medicalHistory: profile.medicalHistory || '',
-    priorExperience: profile.priorExperience || '',
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -26,6 +24,8 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
       await userService.updatePersonalInfo(profile.id, formData);
       setSuccess(true);
       setIsEditing(false);
+      // We rely on the parent or a refresh to update the profile UI if needed, 
+      // but for simplicity in this demo we just show success.
     } catch (error) {
       console.error('Error updating profile:', error);
     } finally {
@@ -106,29 +106,11 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
               />
             </div>
             <div className="flex flex-col gap-2 md:col-span-2">
-              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Historial Médico</label>
-              <textarea 
-                value={formData.medicalHistory}
-                onChange={(e) => setFormData({...formData, medicalHistory: e.target.value})}
-                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all h-20 resize-none"
-                placeholder="Ej: Lesiones, asma, problemas cardíacos..."
-              />
-            </div>
-            <div className="flex flex-col gap-2 md:col-span-2">
-              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Experiencia Previa</label>
-              <textarea 
-                value={formData.priorExperience}
-                onChange={(e) => setFormData({...formData, priorExperience: e.target.value})}
-                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all h-20 resize-none"
-                placeholder="Ej: 2 años de musculación, crossfit..."
-              />
-            </div>
-            <div className="flex flex-col gap-2 md:col-span-2">
               <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Objetivos</label>
               <textarea 
                 value={formData.goals}
                 onChange={(e) => setFormData({...formData, goals: e.target.value})}
-                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all h-20 resize-none"
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all h-24 resize-none"
                 placeholder="Ej: Bajar de peso, ganar masa muscular..."
               />
             </div>
@@ -136,7 +118,7 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
               <button 
                 type="submit" 
                 disabled={loading}
-                className="flex-1 bg-primary text-on-primary py-4 rounded-2xl font-headline font-black italic uppercase tracking-tighter hover:bg-primary/90 transition-all disabled:opacity-50 shadow-glow"
+                className="flex-1 bg-primary text-on-primary py-4 rounded-2xl font-headline font-black italic uppercase tracking-tighter hover:bg-primary/90 transition-all disabled:opacity-50"
               >
                 {loading ? 'Guardando...' : 'Guardar Cambios'}
               </button>
@@ -195,38 +177,49 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
               </div>
             </div>
 
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-6 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-                 <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-3 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-xs">medical_services</span>
-                  Historial Médico
-                 </p>
-                 <p className="font-body text-sm text-tertiary leading-relaxed italic">
-                  {profile.medicalHistory || 'Sin datos registrados.'}
-                 </p>
-              </div>
-              <div className="p-6 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
-                 <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-3 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-xs">history_edu</span>
-                  Experiencia Previa
-                 </p>
-                 <p className="font-body text-sm text-tertiary leading-relaxed italic">
-                  {profile.priorExperience || 'Sin datos registrados.'}
-                 </p>
-              </div>
-            </div>
-
             <div className="md:col-span-2 p-6 bg-surface-container-lowest rounded-2xl border border-outline-variant/10">
                <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-3 flex items-center gap-2">
                 <span className="material-symbols-outlined text-xs">flag</span>
                 Objetivos de Entrenamiento
                </p>
                <p className="font-body text-sm text-tertiary leading-relaxed italic">
-                {profile.goals || 'Sin objetivos definidos.'}
+                {profile.goals || 'Sin objetivos definidos. Edita tu perfil para agregarlos.'}
                </p>
             </div>
           </div>
         )}
+      </section>
+
+      {/* Membership Card Visual */}
+      <section className="relative overflow-hidden bg-gradient-primary p-8 rounded-[2.5rem] shadow-glow min-h-[220px] flex flex-col justify-between">
+        <div className="relative z-10">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="font-headline font-black italic text-2xl text-on-primary-container tracking-tighter uppercase">GYM DE LA COSTA</p>
+              <p className="font-label text-[10px] font-black uppercase text-on-primary-container/60 tracking-widest">Socio Activo</p>
+            </div>
+            <span className="material-symbols-outlined text-4xl text-on-primary-container icon-fill">stars</span>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex justify-between items-end">
+          <div>
+            <p className="font-label text-[10px] uppercase text-on-primary-container/60 mb-1">DNI del Socio</p>
+            <p className="font-headline font-bold text-lg text-on-primary-container">{profile.dni || 'NO REGISTRADO'}</p>
+          </div>
+          <div className="text-right">
+             <p className="font-label text-[10px] uppercase text-on-primary-container/60 mb-1">Miembro desde</p>
+             <p className="font-headline font-bold text-lg text-on-primary-container">
+               {profile.createdAt ? new Date(profile.createdAt.toDate ? profile.createdAt.toDate() : profile.createdAt).toLocaleDateString() : '---'}
+             </p>
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none">
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+        </div>
       </section>
     </div>
   );

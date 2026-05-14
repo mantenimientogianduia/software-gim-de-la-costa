@@ -1,44 +1,79 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #FF3D00;
-  --color-on-primary: #FFFFFF;
-  --color-surface: #0A0A0A;
-  --color-on-surface: #F5F5F5;
-  --color-surface-container-low: #141414;
-  --color-surface-container-lowest: #050505;
-  --color-surface-container-high: #1F1F1F;
-  --color-surface-container-highest: #292929;
-  --color-tertiary: #A0A0A0;
-  --color-outline-variant: #333333;
-  --color-error: #FF5252;
+  --color-surface: #131313;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-surface-variant: #353534;
+  --color-surface-lowest: #0e0e0e;
+  --color-on-surface: #e5e2e1;
+  --color-on-surface-variant: #e4beb4;
   
-  --font-headline: var(--font-sans);
-  --font-body: var(--font-sans);
-  --font-label: var(--font-sans);
+  --color-primary: #ffb5a0;
+  --color-primary-container: #ff5722;
+  --color-on-primary: #5f1500;
+  --color-on-primary-container: #541200;
+  
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-on-error: #690005;
+  
+  --color-tertiary: #c6c6c7;
+  --color-tertiary-container: #909191;
+  
+  --color-outline: #ab8980;
+  --color-outline-variant: #5b4039;
+
+  --font-headline: "Lexend", sans-serif;
+  --font-body: "Work Sans", sans-serif;
+  --font-label: "Space Grotesk", sans-serif;
+
+  --default-border-radius: 0.125rem;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
 }
 
 @layer base {
   body {
-    @apply bg-surface text-on-surface;
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-headline {
+    font-family: var(--font-headline);
+    letter-spacing: -0.02em;
+  }
+
+  .font-label {
+    font-family: var(--font-label);
   }
 }
 
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-container) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-container) 100%);
+}
+
 .shadow-glow {
-  box-shadow: 0 0 20px rgba(255, 61, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(255, 87, 34, 0.1);
 }
 
 .ghost-border {
-  @apply border border-outline-variant/20;
+  border: 1px solid rgba(91, 64, 57, 0.15);
 }
 
-/* Material Symbols configuration */
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
-
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-
-.icon-fill {
-  font-variation-settings: 'FILL' 1;
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

@@ -1,67 +1,135 @@
+import { db } from '@/lib/firebase';
 import { 
   collection, 
   query, 
   where, 
   getDocs, 
-  Timestamp,
-  orderBy
+  Timestamp, 
+  orderBy 
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+
+export interface StreakDay {
+  date: Date;
+  hasWorkout: boolean;
+  type: 'fire' | 'ice';
+}
+
+export interface WeeklyGoal {
+  weekStart: Date;
+  count: number;
+  goal: number;
+  completed: boolean;
+}
 
 export interface StreakData {
   currentStreak: number;
-  totalCheckIns: number;
-  weeklyProgress: boolean[];
-  lastCheckInDate: string | null;
+  history: StreakDay[];
+  weeklyGoals: WeeklyGoal[];
 }
 
-class StreakService {
-  async getStreakData(userEmail: string, daysWindow: number = 30, weeklyGoal: number = 3): Promise<StreakData> {
-    const checkinsRef = collection(db, 'checkins');
+export class StreakService {
+  private attendanceRef = collection(db, 'attendance');
+
+  /**
+   * Calculates the streak data for a user
+   * @param userId The user ID (email in this app)
+   * @param daysToLookBack Default 90 days
+   * @param weeklyTrainingGoal Default 3 days
+   */
+  async getStreakData(userId: string, daysToLookBack: number = 90, weeklyTrainingGoal: number = 3): Promise<StreakData> {
+    const now = new Date();
+    const startDate = new Date(now);
+    startDate.setDate(now.getDate() - daysToLookBack);
+    startDate.setHours(0, 0, 0, 0);
+
     const q = query(
-      checkinsRef,
-      where('userEmail', '==', userEmail),
-      orderBy('checkInAt', 'desc')
+      this.attendanceRef,
+      where('userId', '==', userId)
     );
 
-    const snapshot = await getDocs(q);
-    const checkins = snapshot.docs.map(doc => doc.data());
+    const snap = await getDocs(q);
+    const startDateMillis = startDate.getTime();
 
-    if (checkins.length === 0) {
-      return { currentStreak: 0, totalCheckIns: 0, weeklyProgress: [false, false, false, false, false, false, false], lastCheckInDate: null };
+    const docs = snap.docs
+      .filter(doc => {
+        const data = doc.data();
+        if (!data.checkInAt) return false;
+        return (data.checkInAt as Timestamp).toMillis() >= startDateMillis;
+      })
+      .sort((a, b) => {
+        const dateA = (a.data().checkInAt as Timestamp).toMillis();
+        const dateB = (b.data().checkInAt as Timestamp).toMillis();
+        return dateB - dateA;
+      });
+
+    const workoutDates = new Set<string>();
+    
+    docs.forEach(doc => {
+      const data = doc.data();
+      if (data.checkInAt) {
+        const date = (data.checkInAt as Timestamp).toDate();
+        workoutDates.add(date.toDateString());
+      }
+    });
+
+    // Generate history
+    const history: StreakDay[] = [];
+    for (let i = 0; i < daysToLookBack; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const isWorkout = workoutDates.has(d.toDateString());
+      history.push({
+        date: d,
+        hasWorkout: isWorkout,
+        type: isWorkout ? 'fire' : 'ice'
+      });
     }
 
-    // Logic for calculating streak (simplified for recovery)
-    // In a real scenario, this would compare dates properly
+    // Current Streak calculation
     let currentStreak = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    for (let i = 0; i < history.length; i++) {
+      if (history[i].hasWorkout) {
+        currentStreak++;
+      } else if (i === 0) {
+        // If today is not a workout, streak doesn't break yet if yesterday was a workout
+        continue; 
+      } else {
+        break;
+      }
+    }
 
-    // This is a placeholder for the actual complex logic I wrote before
-    // I will implement a basic version for now to get the UI running
-    
+    // Weekly Goals
+    const weeklyGoals: WeeklyGoal[] = [];
+    const goalValue = weeklyTrainingGoal; 
+
+    for (let i = 0; i < 4; i++) {
+      const ws = new Date(now);
+      ws.setDate(now.getDate() - (now.getDay() || 7) + 1 - (i * 7)); // Start of week (Monday)
+      ws.setHours(0, 0, 0, 0);
+      
+      const we = new Date(ws);
+      we.setDate(ws.getDate() + 6);
+      we.setHours(23, 59, 59, 999);
+
+      let count = 0;
+      workoutDates.forEach(dateStr => {
+        const d = new Date(dateStr);
+        if (d >= ws && d <= we) count++;
+      });
+
+      weeklyGoals.push({
+        weekStart: ws,
+        count,
+        goal: goalValue,
+        completed: count >= goalValue
+      });
+    }
+
     return {
-      currentStreak: checkins.length > 5 ? 5 : checkins.length, // Mocking for now
-      totalCheckIns: checkins.length,
-      weeklyProgress: [true, true, false, true, false, false, false], // Mocking
-      lastCheckInDate: checkins[0].checkInAt?.toDate().toISOString() || null
+      currentStreak,
+      history,
+      weeklyGoals
     };
-  }
-
-  async getRecentCheckins(userEmail: string, limit: number = 5): Promise<any[]> {
-    const checkinsRef = collection(db, 'checkins');
-    const q = query(
-      checkinsRef,
-      where('userEmail', '==', userEmail),
-      orderBy('checkInAt', 'desc'),
-      // Note: limit check here if needed but for small lists getDocs is fine
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.slice(0, limit).map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      date: (doc.data() as any).checkInAt?.toDate()
-    }));
   }
 }
 
