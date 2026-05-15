@@ -13,6 +13,7 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
     gender: profile.gender || 'otro',
     otherSports: profile.otherSports || '',
     fitnessLevel: profile.fitnessLevel || 'principiante',
+    healthObservations: profile.healthObservations || '',
     goals: profile.goals || '',
     weeklyTrainingGoal: profile.weeklyTrainingGoal || 3,
     currentPlan: profile.currentPlan || 'Básico',
@@ -148,12 +149,54 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
 
             <div className="flex flex-col gap-2">
               <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">¿Práctica otro deporte?</label>
-              <input 
-                type="text" 
-                value={formData.otherSports}
-                onChange={(e) => setFormData({...formData, otherSports: e.target.value})}
-                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
-                placeholder="Ej: Fútbol, Tenis, Natación..."
+              <div className="flex flex-col gap-2">
+                <select 
+                  value={formData.otherSports === '' || ['Fútbol', 'Tenis', 'Natación', 'Running', 'Crossfit', 'Ninguno'].includes(formData.otherSports) ? formData.otherSports : 'Otro'}
+                  onChange={(e) => {
+                    if (e.target.value !== 'Otro') {
+                      setFormData({...formData, otherSports: e.target.value === 'Ninguno' ? '' : e.target.value});
+                    }
+                  }}
+                  className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+                >
+                  <option value="">No / Ninguno</option>
+                  <option value="Fútbol">Fútbol</option>
+                  <option value="Tenis">Tenis</option>
+                  <option value="Natación">Natación</option>
+                  <option value="Running">Running</option>
+                  <option value="Crossfit">Crossfit</option>
+                  <option value="Otro">Otro...</option>
+                </select>
+                
+                {(formData.otherSports !== '' && !['Fútbol', 'Tenis', 'Natación', 'Running', 'Crossfit'].includes(formData.otherSports)) && (
+                  <input 
+                    type="text" 
+                    value={formData.otherSports}
+                    onChange={(e) => setFormData({...formData, otherSports: e.target.value})}
+                    className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+                    placeholder="Especifique otro..."
+                  />
+                )}
+                {/* Fallback for "Otro" selection if it was empty before */}
+                {(formData.otherSports === '' && !['Fútbol', 'Tenis', 'Natación', 'Running', 'Crossfit', ''].includes(formData.otherSports)) && (
+                   <input 
+                   type="text" 
+                   value={formData.otherSports}
+                   onChange={(e) => setFormData({...formData, otherSports: e.target.value})}
+                   className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+                   placeholder="Especifique otro..."
+                 />
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Observaciones de Salud / Lesiones</label>
+              <textarea 
+                value={formData.healthObservations}
+                onChange={(e) => setFormData({...formData, healthObservations: e.target.value})}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all h-20 resize-none"
+                placeholder="Ej: Lesión en rodilla izquierda, asma, etc."
               />
             </div>
 
@@ -262,6 +305,15 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
                  </p>
                  <p className="font-body text-sm text-tertiary leading-relaxed italic">
                   {profile.otherSports || 'No práctica otros deportes.'}
+                 </p>
+              </div>
+              <div className="flex-1">
+                 <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-3 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-xs">medical_services</span>
+                  Salud
+                 </p>
+                 <p className="font-body text-sm text-tertiary leading-relaxed italic">
+                  {profile.healthObservations || 'Sin observaciones de salud.'}
                  </p>
               </div>
             </div>
