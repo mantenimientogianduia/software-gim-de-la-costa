@@ -3,15 +3,17 @@
 import { useState } from 'react';
 import { useCountdown } from '@/hooks/useCountdown';
 import { formatMs } from '@/lib/utils/time';
-import { Play, Pause, RotateCcw, BellRing, ChevronUp, ChevronDown } from 'lucide-react';
+import { Play, Pause, RotateCcw, BellRing, ChevronUp, ChevronDown, Music2 } from 'lucide-react';
 import { CircularProgress, ControlButton } from './Shared';
 import { motion, AnimatePresence } from 'motion/react';
+import { AlarmType, defaultAudioService } from '@/services/AudioService';
 
 export function CountdownView() {
   const [setupMode, setSetupMode] = useState(true);
   const [hours, setHours] = useState(0);
   const [minutes, setMinutes] = useState(0);
   const [seconds, setSeconds] = useState(30);
+  const [alarmType, setAlarmType] = useState<AlarmType>(defaultAudioService.getAlarmType());
 
   const totalRequestedMs = (hours * 3600 + minutes * 60 + seconds) * 1000;
   
@@ -19,11 +21,18 @@ export function CountdownView() {
 
   const handleStart = () => {
     if (totalRequestedMs === 0) return;
+    defaultAudioService.setAlarmType(alarmType);
     setTime(totalRequestedMs);
     setSetupMode(false);
-    // Use setTimeout to ensure state update before starting if needed, 
-    // but the hook handles service creation.
     setTimeout(start, 0);
+  };
+
+  const handleTestAlarm = (type: AlarmType) => {
+    const current = defaultAudioService.getAlarmType();
+    defaultAudioService.setAlarmType(type);
+    defaultAudioService.playFinish();
+    // Restore after delay or just leave it set if we're in setup
+    setAlarmType(type);
   };
 
   const handleReset = () => {
@@ -47,6 +56,29 @@ export function CountdownView() {
           <TimeAdjuster label="M" value={minutes} onChange={setMinutes} max={59} />
           <span className="text-2xl font-mono text-white/20">:</span>
           <TimeAdjuster label="S" value={seconds} onChange={setSeconds} max={59} />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <label className="font-mono text-[10px] uppercase tracking-widest text-white/40 flex items-center gap-2">
+            <Music2 size={12} />
+            Alarm Sound
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.values(AlarmType) as AlarmType[]).map((type) => (
+              <button
+                key={type}
+                onClick={() => handleTestAlarm(type)}
+                className={`
+                  py-2 px-1 rounded-md border font-mono text-[10px] uppercase transition-all
+                  ${alarmType === type 
+                    ? 'bg-orange-500/20 border-orange-500 text-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.2)]' 
+                    : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/60'}
+                `}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
         </div>
 
         <button 

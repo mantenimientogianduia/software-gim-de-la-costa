@@ -59,4 +59,19 @@ describe('AudioService', () => {
     audioService.playBeep(880, 0.5);
     expect(mockOscillator.frequency.setValueAtTime).toHaveBeenCalledWith(880, 0);
   });
+
+  it('should play traditional alarm by default', () => {
+    const playBeepSpy = vi.spyOn(audioService, 'playBeep');
+    audioService.playFinish();
+    expect(playBeepSpy).toHaveBeenCalled();
+    expect(audioService.getAlarmType()).toBe('traditional');
+  });
+
+  it('should respect selected alarm type', () => {
+    const playBeepSpy = vi.spyOn(audioService, 'playBeep');
+    audioService.setAlarmType('sustained' as any);
+    audioService.playFinish();
+    // Sustained uses triangle wave
+    expect(playBeepSpy).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 'triangle', expect.any(Number));
+  });
 });
