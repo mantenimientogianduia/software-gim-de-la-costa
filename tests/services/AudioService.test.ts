@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AudioService } from '@/services/AudioService';
 
 describe('AudioService', () => {
@@ -8,6 +8,7 @@ describe('AudioService', () => {
   let mockAudioContext: any;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     mockOscillator = {
       connect: vi.fn(),
       start: vi.fn(),
@@ -73,5 +74,27 @@ describe('AudioService', () => {
     audioService.playFinish();
     // Sustained uses triangle wave
     expect(playBeepSpy).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 'triangle', expect.any(Number));
+  });
+
+  it('should support alarm_clock type', () => {
+    const playBeepSpy = vi.spyOn(audioService, 'playBeep');
+    audioService.setAlarmType('alarm_clock' as any);
+    audioService.playFinish();
+    
+    // Advance timers to trigger the first beep
+    vi.advanceTimersByTime(0);
+    
+    // Alarm clock uses sawtooth wave
+    expect(playBeepSpy).toHaveBeenCalledWith(expect.any(Number), expect.any(Number), 'sawtooth', expect.any(Number));
+  });
+
+  it('should play countdown beep', () => {
+    const playBeepSpy = vi.spyOn(audioService, 'playBeep');
+    audioService.playCountdownBeep();
+    expect(playBeepSpy).toHaveBeenCalledWith(440, 0.1, 'sine', 0.3);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 });

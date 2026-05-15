@@ -2,12 +2,14 @@ export enum AlarmType {
   TRADITIONAL = 'traditional', // 3 short beeps
   SUSTAINED = 'sustained',   // One long 2s beep
   PULSATING = 'pulsating',   // Rapid beeps for 2s
+  ALARM_CLOCK = 'alarm_clock' // Long loud alarm (10s)
 }
 
 export interface IAudioService {
   playBeep(frequency?: number, duration?: number): void;
   playFinish(): void;
   playTransition(): void;
+  playCountdownBeep(): void;
   setAlarmType(type: AlarmType): void;
   getAlarmType(): AlarmType;
 }
@@ -73,6 +75,9 @@ export class AudioService implements IAudioService {
       case AlarmType.PULSATING:
         this.playPulsating();
         break;
+      case AlarmType.ALARM_CLOCK:
+        this.playAlarmClock();
+        break;
       case AlarmType.TRADITIONAL:
       default:
         this.playTraditional();
@@ -99,9 +104,29 @@ export class AudioService implements IAudioService {
     }
   }
 
+  private playAlarmClock(): void {
+    // Intense, loud alarm clock style: repetitive high-pitched pulses
+    const iterations = 20; // 20 * 500ms = 10s
+    const pulseDuration = 0.3;
+    const interval = 500;
+
+    for (let i = 0; i < iterations; i++) {
+      setTimeout(() => {
+        // Double chirp
+        this.playBeep(880, pulseDuration, 'sawtooth', 0.3);
+        setTimeout(() => this.playBeep(880, pulseDuration, 'sawtooth', 0.3), 150);
+      }, i * interval);
+    }
+  }
+
   public playTransition(): void {
     // Short beep for phase changes
     this.playBeep(880, 0.1);
+  }
+
+  public playCountdownBeep(): void {
+    // Lower frequency "thud" or "tick" for countdown
+    this.playBeep(440, 0.1, 'sine', 0.3);
   }
 }
 

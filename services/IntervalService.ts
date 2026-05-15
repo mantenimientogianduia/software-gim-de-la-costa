@@ -61,11 +61,13 @@ export class IntervalService {
   }
 
   private tick(): void {
+    const oldSeconds = Math.floor(this.timeLeftMs / 1000);
     this.timeLeftMs -= 100;
+    const newSeconds = Math.floor(this.timeLeftMs / 1000);
     
     // Warning beeps in the last 3 seconds of a phase
-    if (this.timeLeftMs > 0 && this.timeLeftMs <= 3000 && this.timeLeftMs % 1000 === 0) {
-      this.audioService?.playTransition();
+    if (newSeconds < oldSeconds && newSeconds > 0 && newSeconds <= 3) {
+      this.audioService?.playCountdownBeep();
     }
 
     if (this.timeLeftMs <= 0) {

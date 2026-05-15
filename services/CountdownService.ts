@@ -52,8 +52,15 @@ export class CountdownService {
   }
 
   private tick(): void {
+    const oldSeconds = Math.floor(this.timeLeftMs / 1000);
     this.timeLeftMs -= 100;
+    const newSeconds = Math.floor(this.timeLeftMs / 1000);
     
+    // Countdown beeps for the last 3 seconds (3, 2, 1)
+    if (newSeconds < oldSeconds && newSeconds > 0 && newSeconds <= 3) {
+      this.audioService?.playCountdownBeep();
+    }
+
     if (this.timeLeftMs <= 0) {
       this.timeLeftMs = 0;
       this.isFinished = true;
