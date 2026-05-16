@@ -185,11 +185,14 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
                         whileHover={{ scale: 1.02, zIndex: 10 }}
                         onClick={() => onClassClick?.(c)}
                         style={getPositionStyles(c)}
-                        className="absolute left-1 right-1 bg-primary/90 text-on-primary rounded-lg shadow-glow-error p-3 cursor-pointer overflow-hidden border border-white/20 backdrop-blur-sm group"
+                        className="absolute left-1 right-1 bg-primary/90 text-on-primary rounded-lg shadow-glow-error p-2.5 cursor-pointer overflow-hidden border border-white/20 backdrop-blur-sm group"
                       >
-                        <div className="flex flex-col h-full">
-                           <h4 className="font-headline text-[11px] font-black uppercase leading-tight truncate mb-1">{c.title}</h4>
-                           <div className="flex items-center gap-2 mt-auto">
+                        <div className="flex flex-col h-full min-h-0">
+                           <h4 className="font-headline text-[11px] font-black uppercase leading-[1.05] break-words max-h-[2.15em] overflow-hidden mb-1">{c.title}</h4>
+                           <p className="font-mono text-[9px] leading-none opacity-80">
+                              {c.startTime.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                           </p>
+                           <div className="flex items-center gap-2 mt-auto pt-1">
                               <span className="material-symbols-outlined text-[10px] opacity-70">person</span>
                               <span className="font-label text-[9px] uppercase tracking-tighter opacity-70">{c.enrolledCount}/{c.capacity}</span>
                            </div>
