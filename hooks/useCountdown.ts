@@ -34,7 +34,6 @@ export function useCountdown(initialMs: number) {
     serviceRef.current?.pause();
   }, []);
   const reset = useCallback(() => {
-    defaultAudioService.playTransition();
     serviceRef.current?.reset();
   }, []);
   const setTime = useCallback((ms: number) => serviceRef.current?.updateInitialTime(ms), []);

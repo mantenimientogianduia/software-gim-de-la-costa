@@ -18,6 +18,8 @@ export interface IAudioService {
 export class AudioService implements IAudioService {
   private audioContext: AudioContext | null = null;
   private alarmType: AlarmType = AlarmType.TRADITIONAL;
+  private activeOscillators: OscillatorNode[] = [];
+  private activeTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   private initContext() {
     if (typeof window === 'undefined') return;
@@ -50,6 +52,37 @@ export class AudioService implements IAudioService {
     this.playBeep(220, 0.03, 'sine', 0.01);
   }
 
+  public stopAll(): void {
+    this.activeTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+    this.activeTimeouts = [];
+
+    this.activeOscillators.forEach((oscillator) => {
+      try {
+        oscillator.stop();
+      } catch {
+        // Oscillators can only be stopped once.
+      }
+    });
+    this.activeOscillators = [];
+
+    this.vibrate(0);
+  }
+
+  public vibrate(pattern: number | number[]): void {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(pattern);
+    }
+  }
+
+  private schedule(callback: () => void, delay: number): void {
+    const timeoutId = setTimeout(() => {
+      this.activeTimeouts = this.activeTimeouts.filter((id) => id !== timeoutId);
+      callback();
+    }, delay);
+
+    this.activeTimeouts.push(timeoutId);
+  }
+
   public playBeep(frequency = 880, duration = 0.5, type: OscillatorType = 'sine', volume = 0.3): void {
     if (typeof window === 'undefined') return;
 
@@ -69,6 +102,11 @@ export class AudioService implements IAudioService {
       gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
 
+      oscillator.onended = () => {
+        this.activeOscillators = this.activeOscillators.filter((active) => active !== oscillator);
+      };
+
+      this.activeOscillators.push(oscillator);
       oscillator.start();
       oscillator.stop(this.audioContext.currentTime + duration);
     } catch (e) {
@@ -77,18 +115,24 @@ export class AudioService implements IAudioService {
   }
 
   public playFinish(): void {
+    this.stopAll();
+
     switch (this.alarmType) {
       case AlarmType.SUSTAINED:
+        this.vibrate([500, 100, 500]);
         this.playSustained();
         break;
       case AlarmType.PULSATING:
+        this.vibrate([160, 120, 160, 120, 160, 120, 300]);
         this.playPulsating();
         break;
       case AlarmType.ALARM_CLOCK:
+        this.vibrate([300, 150, 300, 150, 700, 150, 700]);
         this.playAlarmClock();
         break;
       case AlarmType.TRADITIONAL:
       default:
+        this.vibrate([180, 120, 180, 120, 350]);
         this.playTraditional();
         break;
     }
@@ -97,8 +141,8 @@ export class AudioService implements IAudioService {
   private playTraditional(): void {
     // Pleasant "success" sound: A4 -> C#5 -> E5
     this.playBeep(440, 0.2);
-    setTimeout(() => this.playBeep(554.37, 0.2), 150);
-    setTimeout(() => this.playBeep(659.25, 0.4), 300);
+    this.schedule(() => this.playBeep(554.37, 0.2), 150);
+    this.schedule(() => this.playBeep(659.25, 0.4), 300);
   }
 
   private playSustained(): void {
@@ -109,7 +153,7 @@ export class AudioService implements IAudioService {
   private playPulsating(): void {
     // Alerting pulse: Bb4
     for (let i = 0; i < 5; i++) {
-      setTimeout(() => this.playBeep(466.16, 0.15, 'square', 0.2), i * 300);
+      this.schedule(() => this.playBeep(466.16, 0.15, 'square', 0.2), i * 300);
     }
   }
 
@@ -120,10 +164,10 @@ export class AudioService implements IAudioService {
     const interval = 500;
 
     for (let i = 0; i < iterations; i++) {
-      setTimeout(() => {
+      this.schedule(() => {
         // Double chirp
         this.playBeep(880, pulseDuration, 'sawtooth', 0.3);
-        setTimeout(() => this.playBeep(880, pulseDuration, 'sawtooth', 0.3), 150);
+        this.schedule(() => this.playBeep(880, pulseDuration, 'sawtooth', 0.3), 150);
       }, i * interval);
     }
   }
@@ -135,6 +179,7 @@ export class AudioService implements IAudioService {
 
   public playCountdownBeep(): void {
     // Lower frequency "thud" or "tick" for countdown
+    this.vibrate(80);
     this.playBeep(440, 0.1, 'sine', 0.3);
   }
 }
