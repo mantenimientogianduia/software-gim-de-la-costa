@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { calculateMembershipRenewalDate, loadFinanceDashboardData } from '@/services/finance.service';
+import {
+  buildContactLinks,
+  calculateMembershipRenewalDate,
+  calculateMemberFinanceSummaries,
+  recalculateMembershipFromPayments,
+  loadFinanceDashboardData
+} from '@/services/finance.service';
+
+const ts = (date: string) => ({ toDate: () => new Date(`${date}T12:00:00`) });
 
 describe('calculateMembershipRenewalDate', () => {
   it('extends from a future expiration date when the member pays early', () => {
@@ -46,5 +54,77 @@ describe('loadFinanceDashboardData', () => {
     expect(result.paymentPlans).toHaveLength(1);
     expect(result.expiringUsers).toEqual([]);
     expect(result.errors.expiringUsers).toBeInstanceOf(Error);
+  });
+});
+
+describe('calculateMemberFinanceSummaries', () => {
+  it('marks a member without confirmed payments and expiration as overdue', () => {
+    const [summary] = calculateMemberFinanceSummaries({
+      users: [{ id: 'u1', email: 'a@test.com', firstName: 'Ana', lastName: 'Test', role: 'socio', status: 'active', createdAt: ts('2026-01-01'), updatedAt: ts('2026-01-01') }],
+      payments: [],
+      now: new Date('2026-05-16T12:00:00'),
+    });
+
+    expect(summary.financeStatus).toBe('moroso');
+    expect(summary.hasPayments).toBe(false);
+  });
+
+  it('marks an expired member as overdue even with old payments', () => {
+    const [summary] = calculateMemberFinanceSummaries({
+      users: [{ id: 'u1', email: 'a@test.com', firstName: 'Ana', lastName: 'Test', role: 'socio', status: 'active', membershipValidUntil: ts('2026-05-10'), createdAt: ts('2026-01-01'), updatedAt: ts('2026-01-01') }],
+      payments: [{ id: 'p1', userId: 'a@test.com', userName: 'Ana Test', amount: 40000, concept: 'Cuota normal', monthsPaid: 1, paymentDate: ts('2026-04-10'), validUntil: ts('2026-05-10'), status: 'confirmed' }],
+      now: new Date('2026-05-16T12:00:00'),
+    });
+
+    expect(summary.financeStatus).toBe('moroso');
+    expect(summary.daysFromDue).toBe(-6);
+  });
+
+  it('marks a member expiring within seven days as expiring soon', () => {
+    const [summary] = calculateMemberFinanceSummaries({
+      users: [{ id: 'u1', email: 'a@test.com', firstName: 'Ana', lastName: 'Test', role: 'socio', status: 'active', membershipValidUntil: ts('2026-05-20'), createdAt: ts('2026-01-01'), updatedAt: ts('2026-01-01') }],
+      payments: [{ id: 'p1', userId: 'a@test.com', userName: 'Ana Test', amount: 40000, concept: 'Cuota normal', monthsPaid: 1, paymentDate: ts('2026-04-20'), validUntil: ts('2026-05-20'), status: 'confirmed' }],
+      now: new Date('2026-05-16T12:00:00'),
+    });
+
+    expect(summary.financeStatus).toBe('por_vencer');
+    expect(summary.daysFromDue).toBe(4);
+  });
+
+  it('marks a paid member outside the warning window as active', () => {
+    const [summary] = calculateMemberFinanceSummaries({
+      users: [{ id: 'u1', email: 'a@test.com', firstName: 'Ana', lastName: 'Test', role: 'socio', status: 'active', membershipValidUntil: ts('2026-06-20'), createdAt: ts('2026-01-01'), updatedAt: ts('2026-01-01') }],
+      payments: [{ id: 'p1', userId: 'a@test.com', userName: 'Ana Test', amount: 40000, concept: 'Cuota normal', monthsPaid: 1, paymentDate: ts('2026-05-20'), validUntil: ts('2026-06-20'), status: 'confirmed' }],
+      now: new Date('2026-05-16T12:00:00'),
+    });
+
+    expect(summary.financeStatus).toBe('activo');
+  });
+});
+
+describe('recalculateMembershipFromPayments', () => {
+  it('ignores cancelled payments when recalculating expiration', () => {
+    const result = recalculateMembershipFromPayments([
+      { id: 'p1', userId: 'a@test.com', userName: 'Ana Test', amount: 40000, concept: 'Cuota normal', monthsPaid: 1, paymentDate: ts('2026-05-10'), validUntil: ts('2026-06-10'), status: 'confirmed' },
+      { id: 'p2', userId: 'a@test.com', userName: 'Ana Test', amount: 40000, concept: 'Cuota normal', monthsPaid: 1, paymentDate: ts('2026-06-10'), validUntil: ts('2026-07-10'), status: 'cancelled' },
+    ]);
+
+    expect(result?.toISOString().slice(0, 10)).toBe('2026-06-10');
+  });
+});
+
+describe('buildContactLinks', () => {
+  it('builds WhatsApp and email links without sending messages', () => {
+    const links = buildContactLinks({
+      firstName: 'Ana',
+      lastName: 'Test',
+      email: 'ana@test.com',
+      phone: '+54 9 11 1234-5678',
+      financeStatus: 'moroso',
+      membershipValidUntil: new Date('2026-05-10T12:00:00'),
+    });
+
+    expect(links.whatsapp).toContain('https://wa.me/5491112345678');
+    expect(links.email).toContain('mailto:ana@test.com');
   });
 });
