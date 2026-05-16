@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateMembershipRenewalDate } from '@/services/finance.service';
+import { calculateMembershipRenewalDate, loadFinanceDashboardData } from '@/services/finance.service';
 
 describe('calculateMembershipRenewalDate', () => {
   it('extends from a future expiration date when the member pays early', () => {
@@ -29,5 +29,22 @@ describe('calculateMembershipRenewalDate', () => {
     });
 
     expect(result.toISOString().slice(0, 10)).toBe('2026-08-16');
+  });
+});
+
+describe('loadFinanceDashboardData', () => {
+  it('keeps visible payments and plans when expiring memberships fail to load', async () => {
+    const result = await loadFinanceDashboardData({
+      getAllPayments: async () => [{ id: 'payment-1', userId: 'socio@test.com', userName: 'Socio Test', amount: 40000, concept: 'Cuota normal', monthsPaid: 1, validUntil: {}, status: 'confirmed' }],
+      getPaymentPlans: async () => [{ id: 'monthly', name: 'Cuota normal', months: 1, price: 40000, active: true }],
+      getExpiringMemberships: async () => {
+        throw new Error('missing index');
+      },
+    });
+
+    expect(result.payments).toHaveLength(1);
+    expect(result.paymentPlans).toHaveLength(1);
+    expect(result.expiringUsers).toEqual([]);
+    expect(result.errors.expiringUsers).toBeInstanceOf(Error);
   });
 });

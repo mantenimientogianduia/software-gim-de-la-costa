@@ -75,6 +75,25 @@ export function calculateMembershipRenewalDate({
   return renewed;
 }
 
+export async function loadFinanceDashboardData(service: Pick<FinanceService, 'getAllPayments' | 'getPaymentPlans' | 'getExpiringMemberships'>) {
+  const [paymentsResult, plansResult, expiringResult] = await Promise.allSettled([
+    service.getAllPayments(),
+    service.getPaymentPlans(),
+    service.getExpiringMemberships(),
+  ]);
+
+  return {
+    payments: paymentsResult.status === 'fulfilled' ? paymentsResult.value : [],
+    paymentPlans: plansResult.status === 'fulfilled' ? plansResult.value : DEFAULT_PAYMENT_PLANS.map(plan => ({ ...plan, active: true })),
+    expiringUsers: expiringResult.status === 'fulfilled' ? expiringResult.value : [],
+    errors: {
+      payments: paymentsResult.status === 'rejected' ? paymentsResult.reason : null,
+      paymentPlans: plansResult.status === 'rejected' ? plansResult.reason : null,
+      expiringUsers: expiringResult.status === 'rejected' ? expiringResult.reason : null,
+    },
+  };
+}
+
 export class FinanceService {
   private paymentsRef = collection(db, 'payments');
   private paymentPlansRef = collection(db, 'paymentPlans');

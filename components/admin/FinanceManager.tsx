@@ -4,6 +4,7 @@ import {
   calculateMembershipRenewalDate,
   DEFAULT_PAYMENT_PLANS,
   financeService,
+  loadFinanceDashboardData,
   Payment,
   PaymentMethod,
   PaymentPlan
@@ -51,14 +52,13 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [p, plans, e] = await Promise.all([
-        financeService.getAllPayments(),
-        financeService.getPaymentPlans(),
-        financeService.getExpiringMemberships(),
-      ]);
-      setPayments(p);
-      setPaymentPlans(plans);
-      setExpiringUsers(e);
+      const data = await loadFinanceDashboardData(financeService);
+      setPayments(data.payments);
+      setPaymentPlans(data.paymentPlans);
+      setExpiringUsers(data.expiringUsers);
+      Object.values(data.errors).forEach(error => {
+        if (error) console.error(error);
+      });
     } catch (err) {
       console.error(err);
     } finally {
