@@ -127,6 +127,16 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (isSignedIn() && existing().userId == request.auth.token.email);
     }
 
+    // --- Finance Collections ---
+    match /payments/{paymentId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /paymentPlans/{planId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // --- Attendance Collection ---
     match /attendance/{attendanceId} {
       function isValidAttendance(data) {

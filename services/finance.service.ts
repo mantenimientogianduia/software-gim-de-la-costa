@@ -108,9 +108,14 @@ export class FinanceService {
   }
 
   async getAllPayments(): Promise<Payment[]> {
-    const q = query(this.paymentsRef, orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+    const snap = await getDocs(this.paymentsRef);
+    return snap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as Payment))
+      .sort((a, b) => {
+        const aDate = a.createdAt?.toDate?.() ?? a.paymentDate?.toDate?.() ?? new Date(0);
+        const bDate = b.createdAt?.toDate?.() ?? b.paymentDate?.toDate?.() ?? new Date(0);
+        return bDate.getTime() - aDate.getTime();
+      });
   }
 
   async getPaymentPlans(): Promise<PaymentPlan[]> {
