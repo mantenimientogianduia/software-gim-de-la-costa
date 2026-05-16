@@ -51,6 +51,11 @@ export default function LiveAttendance() {
     return lastCheckIn.toDate() < hourAgo;
   };
 
+  const isMembershipOverdue = (membershipValidUntil: any) => {
+    if (!membershipValidUntil?.toDate) return true;
+    return membershipValidUntil.toDate() <= new Date();
+  };
+
   return (
     <div className="bg-surface-container-low p-6 rounded-xl ghost-border h-full ring-1 ring-outline-variant/10">
       <div className="flex items-center justify-between mb-8">
@@ -69,9 +74,9 @@ export default function LiveAttendance() {
             </div>
          ) : (
             presentUsers.map((user: any) => (
-               <div key={user.id} className={`group flex items-center justify-between p-4 rounded-lg transition-all duration-300 border ${isOverstaying(user.lastCheckIn) ? 'bg-error/5 border-error/20' : 'bg-surface-container-high border-outline-variant/5 hover:bg-surface-container-highest'}`}>
+               <div key={user.id} className={`group flex items-center justify-between p-4 rounded-lg transition-all duration-300 border ${isOverstaying(user.lastCheckIn) || isMembershipOverdue(user.membershipValidUntil) ? 'bg-error/5 border-error/20' : 'bg-surface-container-high border-outline-variant/5 hover:bg-surface-container-highest'}`}>
                   <div className="flex items-center gap-4">
-                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black uppercase text-xs border transition-transform group-hover:scale-110 ${isOverstaying(user.lastCheckIn) ? 'bg-error text-white border-error shadow-glow-error' : 'bg-primary/20 text-primary border-primary/10'}`}>
+                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black uppercase text-xs border transition-transform group-hover:scale-110 ${isOverstaying(user.lastCheckIn) || isMembershipOverdue(user.membershipValidUntil) ? 'bg-error text-white border-error shadow-glow-error' : 'bg-primary/20 text-primary border-primary/10'}`}>
                         {user.firstName[0]}{user.lastName[0]}
                      </div>
                      <div>
@@ -79,18 +84,18 @@ export default function LiveAttendance() {
                            {user.firstName} {user.lastName}
                         </h4>
                         <div className="flex items-center gap-2 mt-1">
-                           <span className={`material-symbols-outlined text-[12px] ${isOverstaying(user.lastCheckIn) ? 'text-error animate-pulse' : 'text-primary'}`}>
-                             {isOverstaying(user.lastCheckIn) ? 'warning' : 'fitness_center'}
+                           <span className={`material-symbols-outlined text-[12px] ${isOverstaying(user.lastCheckIn) || isMembershipOverdue(user.membershipValidUntil) ? 'text-error animate-pulse' : 'text-primary'}`}>
+                             {isOverstaying(user.lastCheckIn) || isMembershipOverdue(user.membershipValidUntil) ? 'warning' : 'fitness_center'}
                            </span>
                            <p className="font-label text-[10px] uppercase tracking-wider text-tertiary">
-                              {isOverstaying(user.lastCheckIn) ? 'SESIÓN PROLONGADA' : (user.currentActivity || 'Entrenando')}
+                              {isMembershipOverdue(user.membershipValidUntil) ? 'CUOTA MOROSA' : isOverstaying(user.lastCheckIn) ? 'SESIÓN PROLONGADA' : (user.currentActivity || 'Entrenando')}
                            </p>
                         </div>
                      </div>
                   </div>
                   <div className="text-right">
                      <p className="font-label text-[8px] uppercase tracking-widest text-tertiary mb-1">Ingresó</p>
-                     <p className={`font-mono text-[11px] font-bold ${isOverstaying(user.lastCheckIn) ? 'text-error' : 'text-on-surface'}`}>
+                     <p className={`font-mono text-[11px] font-bold ${isOverstaying(user.lastCheckIn) || isMembershipOverdue(user.membershipValidUntil) ? 'text-error' : 'text-on-surface'}`}>
                         {user.lastCheckIn?.toDate ? new Date(user.lastCheckIn.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                      </p>
                   </div>

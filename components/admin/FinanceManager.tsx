@@ -1,15 +1,18 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  buildContactLinks,
+  calculateMemberFinanceSummaries,
   calculateMembershipRenewalDate,
   DEFAULT_PAYMENT_PLANS,
   financeService,
   loadFinanceDashboardData,
+  MemberFinanceSummary,
   Payment,
   PaymentMethod,
   PaymentPlan
 } from '@/services/finance.service';
-import { userService } from '@/services/user.service';
+import { userService, UserProfile } from '@/services/user.service';
 import { Timestamp } from 'firebase/firestore';
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -23,15 +26,17 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 
 const defaultPlans: PaymentPlan[] = DEFAULT_PAYMENT_PLANS.map(plan => ({ ...plan, active: true }));
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
-type FinanceTab = 'history' | 'expiring' | 'settings';
+type FinanceTab = 'overview' | 'history' | 'expiring' | 'delinquent' | 'communications' | 'settings';
+type FinanceFilter = 'all' | 'moroso' | 'por_vencer' | 'activo' | 'sin_pagos';
 
 export default function FinanceManager({ initialTab = 'history' }: { initialTab?: 'history' | 'expiring' }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>(defaultPlans);
-  const [expiringUsers, setExpiringUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<(UserProfile & { id: string })[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [activeTab, setActiveTab] = useState<FinanceTab>(initialTab);
+  const [activeTab, setActiveTab] = useState<FinanceTab>(initialTab === 'history' ? 'overview' : initialTab);
+  const [financeFilter, setFinanceFilter] = useState<FinanceFilter>('all');
   const [planForm, setPlanForm] = useState({ id: '', name: '', months: 1, price: 0 });
   const [formData, setFormData] = useState({
     userEmail: '',
@@ -49,13 +54,50 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     [formData.planId, paymentPlans]
   );
 
+  const memberSummaries = useMemo(
+    () => calculateMemberFinanceSummaries({ users, payments }),
+    [users, payments]
+  );
+
+  const financeKpis = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const confirmedPayments = payments.filter(payment => payment.status === 'confirmed');
+    const monthlyPayments = confirmedPayments.filter(payment => {
+      const date = payment.paymentDate?.toDate?.();
+      return date && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+    });
+
+    return {
+      delinquent: memberSummaries.filter(member => member.financeStatus === 'moroso').length,
+      expiring: memberSummaries.filter(member => member.financeStatus === 'por_vencer').length,
+      active: memberSummaries.filter(member => member.financeStatus === 'activo').length,
+      noPayments: memberSummaries.filter(member => !member.hasPayments).length,
+      monthRevenue: monthlyPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0),
+      monthPayments: monthlyPayments.length,
+      operationalDebt: memberSummaries.filter(member => member.financeStatus === 'moroso').length * (paymentPlans[0]?.price ?? 0),
+    };
+  }, [memberSummaries, payments, paymentPlans]);
+
+  const filteredMembers = useMemo(() => {
+    return memberSummaries.filter(member => {
+      if (financeFilter === 'all') return true;
+      if (financeFilter === 'sin_pagos') return !member.hasPayments;
+      return member.financeStatus === financeFilter;
+    });
+  }, [financeFilter, memberSummaries]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const data = await loadFinanceDashboardData(financeService);
+      const [data, allUsers] = await Promise.all([
+        loadFinanceDashboardData(financeService),
+        userService.getAllUsers() as Promise<(UserProfile & { id: string })[]>,
+      ]);
       setPayments(data.payments);
       setPaymentPlans(data.paymentPlans);
-      setExpiringUsers(data.expiringUsers);
+      setUsers(allUsers);
       Object.values(data.errors).forEach(error => {
         if (error) console.error(error);
       });
@@ -71,7 +113,7 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
   }, []);
 
   useEffect(() => {
-    setActiveTab(initialTab);
+    setActiveTab(initialTab === 'history' ? 'overview' : initialTab);
   }, [initialTab]);
 
   const applySelectedPlan = (planId: string) => {
@@ -165,6 +207,24 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     }
   };
 
+  const handleCancelPayment = async (payment: Payment) => {
+    if (!payment.id || payment.status === 'cancelled') return;
+    const reason = window.prompt(`Motivo para anular el pago de ${payment.userName}`);
+    if (!reason?.trim()) return;
+
+    setLoading(true);
+    try {
+      await financeService.cancelPayment(payment.id, payment.userId, reason.trim(), 'admin');
+      await fetchData();
+      alert('Pago anulado y vencimiento recalculado.');
+    } catch (err) {
+      console.error(err);
+      alert('Error al anular el pago');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const plansSettings = (
     <div className="bg-surface-container-low p-6 rounded-lg ghost-border">
       <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -243,7 +303,13 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex bg-surface-container-high p-1 rounded-sm gap-1">
+        <div className="flex flex-wrap bg-surface-container-high p-1 rounded-sm gap-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-6 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${activeTab === 'overview' ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
+          >
+            Panel PRO
+          </button>
           <button
             onClick={() => setActiveTab('history')}
             className={`px-6 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${activeTab === 'history' ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
@@ -255,6 +321,18 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
             className={`px-6 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${activeTab === 'expiring' ? 'bg-error text-white font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
           >
             Vencimientos Proximos
+          </button>
+          <button
+            onClick={() => setActiveTab('delinquent')}
+            className={`px-6 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${activeTab === 'delinquent' ? 'bg-error text-white font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
+          >
+            Morosos
+          </button>
+          <button
+            onClick={() => setActiveTab('communications')}
+            className={`px-6 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${activeTab === 'communications' ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
+          >
+            Comunicaciones
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -366,97 +444,295 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
         </div>
       )}
 
-      {activeTab === 'settings' ? (
-        plansSettings
-      ) : activeTab === 'history' ? (
-        <div className="bg-surface-container-low rounded-lg overflow-x-auto ghost-border">
-          <table className="w-full min-w-[920px] text-left border-collapse">
-            <thead>
-              <tr className="bg-surface-container-highest/30 border-b border-outline-variant/15">
-                <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Fecha</th>
-                <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Socio</th>
-                <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Concepto</th>
-                <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Metodo</th>
-                <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Monto</th>
-                <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Vence</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/10">
-              {payments.map((p) => (
-                <tr key={p.id} className="hover:bg-surface-container-high/50 transition-colors">
-                  <td className="p-6 font-mono text-[11px] text-tertiary">
-                    {p.paymentDate?.toDate ? p.paymentDate.toDate().toLocaleDateString() : 'Pendiente'}
-                  </td>
-                  <td className="p-6 font-body font-bold text-sm uppercase tracking-tight">
-                    {p.userName}
-                    <p className="text-[10px] opacity-50 lowercase italic font-normal">{p.userId}</p>
-                  </td>
-                  <td className="p-6 font-label text-[10px] uppercase tracking-widest text-primary font-bold">
-                    {p.concept} ({p.monthsPaid}m)
-                  </td>
-                  <td className="p-6 font-label text-[10px] uppercase tracking-widest text-tertiary">
-                    {p.paymentMethod ? PAYMENT_METHOD_LABELS[p.paymentMethod as PaymentMethod] : '-'}
-                  </td>
-                  <td className="p-6 font-mono text-sm font-bold text-on-surface">
-                    ${p.amount.toLocaleString()}
-                  </td>
-                  <td className="p-6">
-                    <span className="font-mono text-[11px] bg-surface-container-highest px-3 py-1 rounded">
-                      {p.validUntil?.toDate ? p.validUntil.toDate().toLocaleDateString() : '-'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {payments.length === 0 && !loading && (
-            <div className="py-24 text-center opacity-30">
-              <span className="material-symbols-outlined text-4xl mb-4">payments</span>
-              <p className="font-label uppercase tracking-widest text-xs">No hay historial de pagos</p>
-            </div>
-          )}
+      {activeTab === 'settings' && plansSettings}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+            <KpiCard label="Morosos" value={financeKpis.delinquent} tone="error" />
+            <KpiCard label="Sin pagos" value={financeKpis.noPayments} tone="warning" />
+            <KpiCard label="Vencen esta semana" value={financeKpis.expiring} tone="warning" />
+            <KpiCard label="Activos" value={financeKpis.active} tone="success" />
+            <KpiCard label="Pagos del mes" value={financeKpis.monthPayments} />
+            <KpiCard label="Ingresos del mes" value={`$${financeKpis.monthRevenue.toLocaleString()}`} />
+          </div>
+          <MemberFinanceTable
+            members={filteredMembers}
+            filter={financeFilter}
+            onFilterChange={setFinanceFilter}
+            onRecordPayment={(email) => {
+              setIsRecording(true);
+              setFormData({ ...formData, userEmail: email });
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {expiringUsers.map((user) => {
-            const diff = user.membershipValidUntil?.toDate ? Math.ceil((user.membershipValidUntil.toDate().getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : -999;
-            return (
-              <div key={user.id} className={`p-6 rounded-xl ghost-border overflow-hidden relative ${diff < 0 ? 'bg-error/10 border-error' : 'bg-surface-container-low'}`}>
-                {diff < 0 && <div className="absolute top-0 right-0 bg-error text-white px-3 py-1 font-label text-[8px] font-black uppercase tracking-widest">VENCIDO</div>}
-                <h4 className="font-headline font-bold text-lg uppercase tracking-tight mb-4">{user.firstName} {user.lastName}</h4>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-tertiary font-label uppercase tracking-widest">Vencimiento</span>
-                    <span className="font-mono font-bold">
-                      {user.membershipValidUntil?.toDate ? user.membershipValidUntil.toDate().toLocaleDateString() : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-tertiary font-label uppercase tracking-widest">Estado</span>
-                    <span className={`font-bold uppercase tracking-tighter ${diff < 0 ? 'text-error' : 'text-primary'}`}>
-                      {diff < 0 ? `Vencido hace ${Math.abs(diff)} dias` : `Vence en ${diff} dias`}
-                    </span>
-                  </div>
+      )}
+      {activeTab === 'delinquent' && (
+        <MemberFinanceCards
+          members={memberSummaries.filter(member => member.financeStatus === 'moroso')}
+          emptyText="No hay socios morosos"
+          onRecordPayment={(email) => {
+            setIsRecording(true);
+            setFormData({ ...formData, userEmail: email });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+      {activeTab === 'expiring' && (
+        <MemberFinanceCards
+          members={memberSummaries.filter(member => member.financeStatus === 'por_vencer')}
+          emptyText="No hay vencimientos proximos"
+          onRecordPayment={(email) => {
+            setIsRecording(true);
+            setFormData({ ...formData, userEmail: email });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+      {activeTab === 'communications' && (
+        <CommunicationsQueue members={memberSummaries.filter(member => member.financeStatus !== 'activo')} />
+      )}
+      {activeTab === 'history' && (
+        <PaymentsHistory payments={payments} onCancelPayment={handleCancelPayment} />
+      )}
+    </div>
+  );
+}
+
+function KpiCard({ label, value, tone = 'default' }: { label: string; value: string | number; tone?: 'default' | 'error' | 'warning' | 'success' }) {
+  const toneClass = tone === 'error'
+    ? 'text-error border-error/30 bg-error/10'
+    : tone === 'warning'
+      ? 'text-primary border-primary/30 bg-primary/10'
+      : tone === 'success'
+        ? 'text-green-400 border-green-400/30 bg-green-400/10'
+        : 'text-on-surface border-outline-variant/10 bg-surface-container-low';
+
+  return (
+    <div className={`p-4 rounded-xl border ${toneClass}`}>
+      <p className="font-label text-[9px] uppercase tracking-widest text-tertiary mb-2">{label}</p>
+      <p className="font-headline text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function statusLabel(status: MemberFinanceSummary['financeStatus']) {
+  if (status === 'moroso') return 'Moroso';
+  if (status === 'por_vencer') return 'Por vencer';
+  return 'Activo';
+}
+
+function statusClass(status: MemberFinanceSummary['financeStatus']) {
+  if (status === 'moroso') return 'bg-error/15 text-error border-error/30';
+  if (status === 'por_vencer') return 'bg-primary/15 text-primary border-primary/30';
+  return 'bg-green-500/15 text-green-400 border-green-500/30';
+}
+
+function MemberFinanceTable({
+  members,
+  filter,
+  onFilterChange,
+  onRecordPayment,
+}: {
+  members: MemberFinanceSummary[];
+  filter: FinanceFilter;
+  onFilterChange: (filter: FinanceFilter) => void;
+  onRecordPayment: (email: string) => void;
+}) {
+  const filters: Array<{ id: FinanceFilter; label: string }> = [
+    { id: 'all', label: 'Todos' },
+    { id: 'moroso', label: 'Morosos' },
+    { id: 'por_vencer', label: 'Por vencer' },
+    { id: 'activo', label: 'Activos' },
+    { id: 'sin_pagos', label: 'Sin pagos' },
+  ];
+
+  return (
+    <div className="bg-surface-container-low rounded-lg ghost-border overflow-hidden">
+      <div className="flex flex-wrap gap-2 p-4 border-b border-outline-variant/10">
+        {filters.map(item => (
+          <button
+            key={item.id}
+            onClick={() => onFilterChange(item.id)}
+            className={`px-4 py-2 rounded font-label text-[10px] uppercase tracking-widest ${filter === item.id ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-tertiary'}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[980px] text-left">
+          <thead>
+            <tr className="bg-surface-container-highest/30 border-b border-outline-variant/15">
+              <th className="p-5 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Socio</th>
+              <th className="p-5 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Estado</th>
+              <th className="p-5 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Vence</th>
+              <th className="p-5 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Ultimo pago</th>
+              <th className="p-5 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Antiguedad</th>
+              <th className="p-5 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Total</th>
+              <th className="p-5"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-outline-variant/10">
+            {members.map(member => (
+              <tr key={member.id} className="hover:bg-surface-container-high/40">
+                <td className="p-5 font-body font-bold uppercase text-sm">
+                  {member.firstName} {member.lastName}
+                  <p className="text-[10px] lowercase opacity-50 font-normal">{member.email}</p>
+                </td>
+                <td className="p-5">
+                  <span className={`px-3 py-1 rounded-full border font-label text-[9px] uppercase tracking-widest ${statusClass(member.financeStatus)}`}>
+                    {statusLabel(member.financeStatus)}
+                  </span>
+                </td>
+                <td className="p-5 font-mono text-xs">
+                  {member.membershipValidUntil ? member.membershipValidUntil.toLocaleDateString() : 'Sin fecha'}
+                  <p className="text-[10px] text-tertiary">{member.daysFromDue === null ? 'Sin datos' : member.daysFromDue < 0 ? `${Math.abs(member.daysFromDue)} dias vencido` : `${member.daysFromDue} dias`}</p>
+                </td>
+                <td className="p-5 font-mono text-xs">{member.lastPaymentDate ? member.lastPaymentDate.toLocaleDateString() : 'Sin pagos'}</td>
+                <td className="p-5 font-mono text-xs">{member.memberAgeDays === null ? '-' : `${member.memberAgeDays} dias`}</td>
+                <td className="p-5 font-mono text-xs font-bold">${member.totalPaid.toLocaleString()}</td>
+                <td className="p-5 text-right">
+                  <button onClick={() => onRecordPayment(member.email)} className="px-4 py-2 rounded bg-primary text-on-primary font-label text-[9px] uppercase tracking-widest font-black">
+                    Registrar pago
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {members.length === 0 && (
+        <div className="py-20 text-center opacity-40">
+          <span className="material-symbols-outlined text-4xl mb-3">search_off</span>
+          <p className="font-label uppercase tracking-widest text-xs">Sin resultados</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MemberFinanceCards({ members, emptyText, onRecordPayment }: { members: MemberFinanceSummary[]; emptyText: string; onRecordPayment: (email: string) => void }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {members.map(member => (
+        <div key={member.id} className={`p-6 rounded-xl ghost-border ${member.financeStatus === 'moroso' ? 'bg-error/10 border-error/40' : 'bg-surface-container-low'}`}>
+          <div className="flex justify-between gap-3 mb-4">
+            <h4 className="font-headline font-bold text-lg uppercase tracking-tight">{member.firstName} {member.lastName}</h4>
+            <span className={`h-fit px-3 py-1 rounded-full border font-label text-[8px] uppercase tracking-widest ${statusClass(member.financeStatus)}`}>{statusLabel(member.financeStatus)}</span>
+          </div>
+          <div className="space-y-2 font-label text-[10px] uppercase tracking-widest text-tertiary">
+            <p>Vence: <span className="text-on-surface font-mono">{member.membershipValidUntil ? member.membershipValidUntil.toLocaleDateString() : 'Sin fecha'}</span></p>
+            <p>Ultimo pago: <span className="text-on-surface font-mono">{member.lastPaymentDate ? member.lastPaymentDate.toLocaleDateString() : 'Sin pagos'}</span></p>
+            <p>Total pagado: <span className="text-on-surface font-mono">${member.totalPaid.toLocaleString()}</span></p>
+          </div>
+          <button onClick={() => onRecordPayment(member.email)} className="w-full mt-5 py-3 bg-surface-container-highest hover:bg-primary hover:text-on-primary rounded font-label text-[9px] font-black uppercase tracking-widest transition-all">
+            Registrar pago
+          </button>
+        </div>
+      ))}
+      {members.length === 0 && (
+        <div className="col-span-full py-24 text-center opacity-30">
+          <span className="material-symbols-outlined text-4xl mb-4">event_available</span>
+          <p className="font-label uppercase tracking-widest text-xs">{emptyText}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommunicationsQueue({ members }: { members: MemberFinanceSummary[] }) {
+  return (
+    <div className="bg-surface-container-low rounded-lg ghost-border overflow-hidden">
+      <div className="p-6 border-b border-outline-variant/10">
+        <h3 className="font-headline text-xl font-black uppercase tracking-tight italic">Bandeja manual de comunicaciones</h3>
+        <p className="mt-2 text-sm text-tertiary">Abre WhatsApp o mail con texto prearmado. No envia nada automatico.</p>
+      </div>
+      <div className="divide-y divide-outline-variant/10">
+        {members.map(member => {
+          const links = buildContactLinks(member);
+          return (
+            <div key={member.id} className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h4 className="font-body font-bold uppercase">{member.firstName} {member.lastName}</h4>
+                  <span className={`px-3 py-1 rounded-full border font-label text-[8px] uppercase tracking-widest ${statusClass(member.financeStatus)}`}>{statusLabel(member.financeStatus)}</span>
                 </div>
-                <button
-                  onClick={() => {
-                    setIsRecording(true);
-                    setFormData({ ...formData, userEmail: user.email });
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="w-full mt-6 py-3 bg-surface-container-highest hover:bg-primary hover:text-white transition-all font-label text-[9px] font-bold uppercase tracking-widest rounded"
-                >
-                  Registrar Renovacion
-                </button>
+                <p className="text-xs text-tertiary mt-1">{links.message}</p>
               </div>
-            );
-          })}
-          {expiringUsers.length === 0 && !loading && (
-            <div className="col-span-full py-24 text-center opacity-30">
-              <span className="material-symbols-outlined text-4xl mb-4">event_available</span>
-              <p className="font-label uppercase tracking-widest text-xs">No hay vencimientos proximos</p>
+              <div className="flex gap-2">
+                {links.whatsapp ? (
+                  <a href={links.whatsapp} target="_blank" rel="noreferrer" className="px-4 py-3 rounded bg-green-600 text-white font-label text-[9px] uppercase tracking-widest font-black">WhatsApp</a>
+                ) : (
+                  <button disabled className="px-4 py-3 rounded bg-surface-container-highest text-tertiary/50 font-label text-[9px] uppercase tracking-widest">Sin telefono</button>
+                )}
+                {links.email && (
+                  <a href={links.email} className="px-4 py-3 rounded bg-primary text-on-primary font-label text-[9px] uppercase tracking-widest font-black">Email</a>
+                )}
+              </div>
             </div>
-          )}
+          );
+        })}
+        {members.length === 0 && (
+          <div className="py-24 text-center opacity-30">
+            <span className="material-symbols-outlined text-4xl mb-4">mark_email_read</span>
+            <p className="font-label uppercase tracking-widest text-xs">No hay socios para contactar</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PaymentsHistory({ payments, onCancelPayment }: { payments: Payment[]; onCancelPayment: (payment: Payment) => void }) {
+  return (
+    <div className="bg-surface-container-low rounded-lg overflow-x-auto ghost-border">
+      <table className="w-full min-w-[1040px] text-left border-collapse">
+        <thead>
+          <tr className="bg-surface-container-highest/30 border-b border-outline-variant/15">
+            <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Fecha</th>
+            <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Socio</th>
+            <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Concepto</th>
+            <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Estado</th>
+            <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Metodo</th>
+            <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Monto</th>
+            <th className="p-6 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Vence</th>
+            <th className="p-6"></th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-outline-variant/10">
+          {payments.map(payment => (
+            <tr key={payment.id} className={`hover:bg-surface-container-high/50 transition-colors ${payment.status === 'cancelled' ? 'opacity-60' : ''}`}>
+              <td className="p-6 font-mono text-[11px] text-tertiary">{payment.paymentDate?.toDate ? payment.paymentDate.toDate().toLocaleDateString() : 'Pendiente'}</td>
+              <td className="p-6 font-body font-bold text-sm uppercase tracking-tight">
+                {payment.userName}
+                <p className="text-[10px] opacity-50 lowercase italic font-normal">{payment.userId}</p>
+              </td>
+              <td className="p-6 font-label text-[10px] uppercase tracking-widest text-primary font-bold">{payment.concept} ({payment.monthsPaid}m)</td>
+              <td className="p-6">
+                <span className={`px-3 py-1 rounded-full border font-label text-[8px] uppercase tracking-widest ${payment.status === 'cancelled' ? 'bg-error/10 text-error border-error/30' : 'bg-green-500/10 text-green-400 border-green-500/30'}`}>
+                  {payment.status === 'cancelled' ? 'Anulado' : 'Confirmado'}
+                </span>
+                {payment.cancelReason && <p className="mt-1 text-[10px] text-tertiary">{payment.cancelReason}</p>}
+              </td>
+              <td className="p-6 font-label text-[10px] uppercase tracking-widest text-tertiary">{payment.paymentMethod ? PAYMENT_METHOD_LABELS[payment.paymentMethod as PaymentMethod] : '-'}</td>
+              <td className="p-6 font-mono text-sm font-bold text-on-surface">${payment.amount.toLocaleString()}</td>
+              <td className="p-6"><span className="font-mono text-[11px] bg-surface-container-highest px-3 py-1 rounded">{payment.validUntil?.toDate ? payment.validUntil.toDate().toLocaleDateString() : '-'}</span></td>
+              <td className="p-6 text-right">
+                {payment.status !== 'cancelled' && (
+                  <button onClick={() => onCancelPayment(payment)} className="px-4 py-2 rounded bg-error/10 text-error hover:bg-error hover:text-white font-label text-[9px] uppercase tracking-widest font-black transition-all">
+                    Anular
+                  </button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {payments.length === 0 && (
+        <div className="py-24 text-center opacity-30">
+          <span className="material-symbols-outlined text-4xl mb-4">payments</span>
+          <p className="font-label uppercase tracking-widest text-xs">No hay historial de pagos</p>
         </div>
       )}
     </div>

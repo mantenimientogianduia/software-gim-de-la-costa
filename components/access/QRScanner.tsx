@@ -3,9 +3,11 @@ import { useEffect, useState, useRef } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { attendanceService } from '@/services/attendance.service';
 import { userService } from '@/services/user.service';
+import { calculateMemberFinanceSummaries, financeService } from '@/services/finance.service';
+import { defaultAudioService } from '@/services/AudioService';
 
 export default function QRScanner() {
-  const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'warning' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,9 +31,18 @@ export default function QRScanner() {
         setStatus('success');
         setMessage(`Salida: ${user.firstName} ${user.lastName}`);
       } else {
+        const payments = await financeService.getUserPayments(user.email);
+        const [finance] = calculateMemberFinanceSummaries({ users: [user], payments });
         await attendanceService.checkIn(user.email, user.id);
-        setStatus('success');
-        setMessage(`Ingreso: ${user.firstName} ${user.lastName}`);
+        if (finance?.financeStatus === 'moroso') {
+          defaultAudioService.vibrate([300, 100, 300]);
+          defaultAudioService.playBeep(180, 0.25, 'sawtooth', 0.35);
+          setStatus('warning');
+          setMessage(`MOROSO / CUOTA VENCIDA / SIN PAGOS - Ingreso permitido: ${user.firstName} ${user.lastName}`);
+        } else {
+          setStatus('success');
+          setMessage(`Ingreso: ${user.firstName} ${user.lastName}`);
+        }
       }
 
       setTimeout(() => {
@@ -68,6 +79,7 @@ export default function QRScanner() {
             </div>
             <div className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-500 ${
                status === 'success' ? 'bg-green-500 text-white shadow-glow-green' :
+               status === 'warning' ? 'bg-yellow-500 text-black' :
                status === 'error' ? 'bg-red-500 text-white' :
                status === 'processing' ? 'bg-primary text-on-primary animate-pulse' : 'bg-surface-container-highest text-tertiary'
             }`}>
@@ -76,8 +88,8 @@ export default function QRScanner() {
          </div>
 
          <div className="bg-black/20 p-12 rounded-xl border-2 border-dashed border-outline-variant/20 flex flex-col items-center justify-center text-center">
-            <span className={`material-symbols-outlined text-6xl mb-4 transition-all duration-500 ${status === 'success' ? 'text-green-500 scale-110' : status === 'error' ? 'text-red-500' : 'text-primary'}`}>
-              {status === 'success' ? 'check_circle' : status === 'error' ? 'cancel' : 'qr_code_scanner'}
+            <span className={`material-symbols-outlined text-6xl mb-4 transition-all duration-500 ${status === 'success' ? 'text-green-500 scale-110' : status === 'warning' ? 'text-yellow-500 scale-110 animate-pulse' : status === 'error' ? 'text-red-500' : 'text-primary'}`}>
+              {status === 'success' ? 'check_circle' : status === 'warning' ? 'warning' : status === 'error' ? 'cancel' : 'qr_code_scanner'}
             </span>
             <p className="font-label text-xs uppercase tracking-widest text-tertiary max-w-[200px]">
               Posiciona el código frente al lector o ingresa el DNI debajo
@@ -107,6 +119,7 @@ export default function QRScanner() {
          {message && (
             <div className={`mt-8 p-6 rounded-2xl text-center shadow-xl animate-in fade-in slide-in-from-top-4 duration-500 ${
                status === 'success' ? 'bg-green-500 text-white' :
+               status === 'warning' ? 'bg-yellow-500 text-black' :
                status === 'error' ? 'bg-red-500 text-white' : 'bg-surface-container-highest text-white'
             }`}>
                <p className="font-headline font-black uppercase italic text-lg">{message}</p>

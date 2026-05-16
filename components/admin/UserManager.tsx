@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { userService, UserProfile } from '@/services/user.service';
+import { calculateMemberFinanceSummaries, financeService, Payment } from '@/services/finance.service';
 
 export default function UserManager() {
   const [users, setUsers] = useState<(UserProfile & { id: string })[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'active'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,8 +21,12 @@ export default function UserManager() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const data = await userService.getAllUsers() as (UserProfile & { id: string })[];
+      const [data, paymentData] = await Promise.all([
+        userService.getAllUsers() as Promise<(UserProfile & { id: string })[]>,
+        financeService.getAllPayments(),
+      ]);
       setUsers(data);
+      setPayments(paymentData);
     } catch (err) {
       console.error('Error fetching users:', err);
     } finally {
@@ -84,6 +90,15 @@ export default function UserManager() {
     }
   };
 
+  const handlePhoneChange = async (userId: string, phone: string) => {
+    try {
+      await userService.updateUserPhone(userId, phone);
+      await fetchUsers();
+    } catch (err) {
+      alert('Error al actualizar telefono');
+    }
+  };
+
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const matchesSearch = `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -100,6 +115,11 @@ export default function UserManager() {
     active: users.filter(u => u.status === 'active').length,
     pending: users.filter(u => u.status === 'pending').length
   }), [users]);
+
+  const financeByEmail = useMemo(() => {
+    const summaries = calculateMemberFinanceSummaries({ users, payments });
+    return new Map(summaries.map(summary => [summary.email, summary]));
+  }, [users, payments]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -228,8 +248,10 @@ export default function UserManager() {
                   <tr className="bg-surface-container-highest/20 border-b border-outline-variant/10">
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Identidad</th>
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">DNI Acceso</th>
+                     <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Telefono</th>
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Rol</th>
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Estado</th>
+                     <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Cuota</th>
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary text-right">Acciones</th>
                   </tr>
                </thead>
@@ -258,6 +280,19 @@ export default function UserManager() {
                            </div>
                         </td>
                         <td className="p-8">
+                           <input
+                             type="text"
+                             defaultValue={user.phone || ''}
+                             placeholder="+54..."
+                             onBlur={(e) => {
+                               if (e.target.value !== (user.phone || '')) {
+                                 handlePhoneChange(user.id, e.target.value);
+                               }
+                             }}
+                             className="bg-surface-container-highest/50 px-4 py-2 rounded-lg font-mono text-xs text-primary font-bold outline-none border border-transparent focus:border-primary/30 w-36"
+                           />
+                        </td>
+                        <td className="p-8">
                            <select 
                              value={user.role}
                              onChange={(e) => handleRoleChange(user.id, e.target.value as any)}
@@ -267,6 +302,22 @@ export default function UserManager() {
                              <option value="profesor">Coach</option>
                              <option value="admin">Admin</option>
                            </select>
+                        </td>
+                        <td className="p-8">
+                           {(() => {
+                             const finance = financeByEmail.get(user.email);
+                             if (!finance) return <span className="text-tertiary text-xs">-</span>;
+                             const statusClass = finance.financeStatus === 'moroso' ? 'bg-error/10 text-error border-error/30' : finance.financeStatus === 'por_vencer' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-green-500/10 text-green-400 border-green-500/30';
+                             const label = finance.financeStatus === 'moroso' ? 'Moroso' : finance.financeStatus === 'por_vencer' ? 'Por vencer' : 'Activo';
+                             return (
+                               <div>
+                                 <span className={`px-3 py-1 rounded-full border font-label text-[8px] uppercase tracking-widest ${statusClass}`}>{label}</span>
+                                 <p className="mt-2 font-mono text-[10px] text-tertiary">
+                                   {finance.membershipValidUntil ? finance.membershipValidUntil.toLocaleDateString() : 'Sin vencimiento'} · ${finance.totalPaid.toLocaleString()}
+                                 </p>
+                               </div>
+                             );
+                           })()}
                         </td>
                         <td className="p-8">
                            <div className="flex items-center gap-3">

@@ -23,6 +23,7 @@ export interface UserProfile {
   lastCheckIn?: any;
   membershipValidUntil?: any;
   lastPaymentDate?: any;
+  phone?: string;
   weight?: number;
   height?: number;
   gender?: 'masculino' | 'femenino' | 'otro';
@@ -57,6 +58,7 @@ export class UserService {
       goals: '',
       weeklyTrainingGoal: 3,
       currentPlan: 'Básico',
+      phone: '',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -110,7 +112,12 @@ export class UserService {
     await updateDoc(userRef, { dni, updatedAt: serverTimestamp() });
   }
 
-  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName'>>): Promise<void> {
+  async updateUserPhone(userId: string, phone: string): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { phone, updatedAt: serverTimestamp() });
+  }
+
+  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName' | 'phone'>>): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
   }
