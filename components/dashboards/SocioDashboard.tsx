@@ -131,6 +131,10 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                  <div className={`${(activeTab === 'routine' || activeTab === 'classes' || activeTab === 'timer') ? 'lg:col-span-12' : 'lg:col-span-8'} flex flex-col gap-6`}>
                      {activeTab === 'home' && (
                        <>
+                         <div className="md:hidden">
+                           <QRGenerator dni={profile.dni} />
+                         </div>
+
                          <section onClick={() => setActiveTab('routine')} className="cursor-pointer bg-surface-container-low p-6 md:p-8 rounded-lg relative overflow-hidden ghost-border hover:bg-surface-container-high transition-all">
                            <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                              <div>
@@ -200,7 +204,7 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                  </div>
                  
                  {activeTab !== 'routine' && activeTab !== 'classes' && activeTab !== 'timer' && (
-                   <div className="lg:col-span-4 flex flex-col gap-6">
+                   <div className="hidden lg:flex lg:col-span-4 flex-col gap-6">
                       <section className="bg-surface-container-low p-8 rounded-[2rem] ghost-border relative overflow-hidden group">
                          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>
                          <h3 className="font-headline font-bold text-lg uppercase tracking-tight mb-6">Membresía</h3>
