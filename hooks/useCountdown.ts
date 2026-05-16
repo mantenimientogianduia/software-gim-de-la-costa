@@ -25,9 +25,18 @@ export function useCountdown(initialMs: number) {
     return () => serviceRef.current?.cleanup();
   }, [initialMs, init]);
 
-  const start = useCallback(() => serviceRef.current?.start(), []);
-  const pause = useCallback(() => serviceRef.current?.pause(), []);
-  const reset = useCallback(() => serviceRef.current?.reset(), []);
+  const start = useCallback(() => {
+    defaultAudioService.unlock();
+    serviceRef.current?.start();
+  }, []);
+  const pause = useCallback(() => {
+    defaultAudioService.playTransition();
+    serviceRef.current?.pause();
+  }, []);
+  const reset = useCallback(() => {
+    defaultAudioService.playTransition();
+    serviceRef.current?.reset();
+  }, []);
   const setTime = useCallback((ms: number) => serviceRef.current?.updateInitialTime(ms), []);
 
   return {

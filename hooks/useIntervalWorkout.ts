@@ -28,14 +28,17 @@ export function useIntervalWorkout(config: IntervalConfig | null) {
   }, [config, init]);
 
   const start = useCallback(() => {
+    defaultAudioService.unlock();
     serviceRef.current?.start();
   }, []);
 
   const pause = useCallback(() => {
+    defaultAudioService.playTransition();
     serviceRef.current?.pause();
   }, []);
 
   const reset = useCallback(() => {
+    defaultAudioService.playTransition();
     serviceRef.current?.reset();
   }, []);
 

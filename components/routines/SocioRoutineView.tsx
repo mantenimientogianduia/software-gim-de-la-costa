@@ -91,7 +91,7 @@ export default function SocioRoutineView({ userId }: { userId: string }) {
   const activeDay = weeks[activeWeekIdx]?.days[activeDayIdx];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-20">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 pb-32 md:pb-20">
       {/* Header PRO */}
       <div className="bg-surface-container-low p-8 rounded-[2.5rem] ghost-border flex flex-col md:flex-row justify-between items-start gap-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-1/4 h-full bg-primary/5 blur-3xl rounded-full translate-x-1/2"></div>
@@ -183,10 +183,10 @@ export default function SocioRoutineView({ userId }: { userId: string }) {
       </div>
 
       {/* Floating Action PRO */}
-      <div className="fixed bottom-10 left-10 right-10 z-50 flex justify-center">
+      <div className="sticky bottom-28 md:bottom-6 z-40 flex justify-center px-2">
          <button 
            onClick={handleFinishSession}
-           className="bg-gradient-primary text-on-primary px-16 py-5 rounded-[2rem] font-headline text-lg font-black uppercase tracking-[0.3em] shadow-[0_20px_50px_rgba(255,87,34,0.4)] hover:scale-105 active:scale-95 transition-all flex items-center gap-4"
+           className="w-full max-w-xl bg-gradient-primary text-on-primary px-6 md:px-16 py-4 md:py-5 rounded-[2rem] font-headline text-sm md:text-lg font-black uppercase tracking-[0.18em] md:tracking-[0.3em] shadow-[0_20px_50px_rgba(255,87,34,0.4)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-4"
          >
            <span className="material-symbols-outlined text-3xl">task_alt</span>
            Finalizar Entrenamiento

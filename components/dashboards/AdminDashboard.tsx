@@ -75,7 +75,7 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col h-full overflow-y-auto pb-24 md:pb-0">
+      <main className="flex-1 flex flex-col h-full overflow-y-auto">
         <header className="bg-surface sticky top-0 z-50 px-4 md:px-6 py-4 border-b border-outline-variant/15 flex justify-between items-center">
           <h1 className="font-headline text-xl md:text-2xl font-black uppercase tracking-tighter">
             {activeTab === 'overview' ? 'Panel de Control'
@@ -89,6 +89,20 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
             {profile.firstName.charAt(0)}{profile.lastName.charAt(0)}
           </div>
         </header>
+
+        <nav className="md:hidden sticky top-[73px] z-40 flex gap-2 overflow-x-auto border-b border-outline-variant/15 bg-surface/95 px-4 py-3 backdrop-blur-xl no-scrollbar">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => openTab(item.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 transition-all ${activeTab === item.id ? 'bg-primary text-on-primary shadow-glow' : 'bg-surface-container-low text-tertiary'}`}
+              aria-label={item.label}
+            >
+              <span className={`material-symbols-outlined text-[20px] ${activeTab === item.id ? 'icon-fill' : ''}`}>{item.icon}</span>
+              <span className="font-label text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+            </button>
+          ))}
+        </nav>
 
         <div className="p-4 md:p-10 flex flex-col gap-8 max-w-7xl mx-auto w-full">
           {activeTab === 'overview' && <AdminOverview onManageExpired={openExpiringMemberships} />}
@@ -107,19 +121,6 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
         </div>
       </main>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 grid grid-cols-6 gap-1 border-t border-outline-variant/15 bg-surface/95 px-2 pb-5 pt-2 backdrop-blur-xl">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => openTab(item.id)}
-            className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 transition-all ${activeTab === item.id ? 'bg-surface-container-high text-primary-container' : 'text-tertiary'}`}
-            aria-label={item.label}
-          >
-            <span className={`material-symbols-outlined text-[20px] ${activeTab === item.id ? 'icon-fill' : ''}`}>{item.icon}</span>
-            <span className="max-w-full truncate font-label text-[8px] font-black uppercase tracking-tight">{item.label}</span>
-          </button>
-        ))}
-      </nav>
     </div>
   );
 }

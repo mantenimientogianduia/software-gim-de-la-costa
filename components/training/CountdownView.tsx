@@ -21,6 +21,7 @@ export function CountdownView() {
 
   const handleStart = () => {
     if (totalRequestedMs === 0) return;
+    defaultAudioService.unlock();
     defaultAudioService.setAlarmType(alarmType);
     setTime(totalRequestedMs);
     setSetupMode(false);
@@ -28,7 +29,7 @@ export function CountdownView() {
   };
 
   const handleTestAlarm = (type: AlarmType) => {
-    const current = defaultAudioService.getAlarmType();
+    defaultAudioService.unlock();
     defaultAudioService.setAlarmType(type);
     defaultAudioService.playFinish();
     // Restore after delay or just leave it set if we're in setup

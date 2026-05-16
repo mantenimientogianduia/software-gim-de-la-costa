@@ -11,6 +11,10 @@ import PersonalInfo from '@/components/profile/PersonalInfo';
 
 export default function SocioDashboard({ profile }: { profile: UserProfile & { id: string } }) {
   const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer' | 'streak' | 'profile'>('home');
+  const membershipDaysLeft = (() => {
+    if (!profile.membershipValidUntil?.toDate) return null;
+    return Math.ceil((profile.membershipValidUntil.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  })();
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-24 md:pb-0 flex flex-col md:flex-row">
@@ -143,19 +147,30 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                            <div className="flex justify-between items-center mb-6">
                              <h3 className="font-headline font-bold text-xl uppercase tracking-tight">Tu Progreso</h3>
                            </div>
-                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                              <div className="bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between border-b border-b-primary/30">
                                <span className="material-symbols-outlined text-primary mb-4">local_fire_department</span>
                                <div>
-                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Entrenamientos</p>
-                                 <p className="font-headline font-bold text-2xl">--<span className="text-lg text-primary">/--</span></p>
+                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Meta Semanal</p>
+                                 <p className="font-headline font-bold text-2xl">
+                                   {profile.weeklyTrainingGoal || 0}<span className="text-lg text-primary"> dias</span>
+                                 </p>
                                </div>
                              </div>
                              <div className="bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between border-b border-b-primary/30">
-                               <span className="material-symbols-outlined text-primary mb-4">timer</span>
+                               <span className="material-symbols-outlined text-primary mb-4">assignment</span>
                                <div>
-                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Tiempo Total</p>
-                                 <p className="font-headline font-bold text-2xl">--h<span className="text-lg text-primary">--m</span></p>
+                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Plan Actual</p>
+                                 <p className="font-headline font-bold text-xl truncate">{profile.currentPlan || 'Sin asignar'}</p>
+                               </div>
+                             </div>
+                             <div className="bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between border-b border-b-primary/30">
+                               <span className="material-symbols-outlined text-primary mb-4">event_available</span>
+                               <div>
+                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Membresia</p>
+                                 <p className="font-headline font-bold text-2xl">
+                                   {membershipDaysLeft === null ? 'Sin datos' : membershipDaysLeft < 0 ? 'Vencida' : `${membershipDaysLeft}d`}
+                                 </p>
                                </div>
                              </div>
                            </div>
