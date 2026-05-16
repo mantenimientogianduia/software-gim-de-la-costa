@@ -3,8 +3,11 @@ import { AuthService } from './auth.service';
 
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(),
+  GoogleAuthProvider: vi.fn(),
   signInWithEmailAndPassword: vi.fn(),
   createUserWithEmailAndPassword: vi.fn(),
+  signInWithPopup: vi.fn(),
+  getAdditionalUserInfo: vi.fn(),
   signOut: vi.fn(),
 }));
 

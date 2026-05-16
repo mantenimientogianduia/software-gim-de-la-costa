@@ -66,7 +66,14 @@ describe('IntervalService', () => {
   });
 
   it('should call audio service on transitions and finish', () => {
-    const mockAudio = { playFinish: vi.fn(), playBeep: vi.fn(), playTransition: vi.fn() };
+    const mockAudio = {
+      playFinish: vi.fn(),
+      playBeep: vi.fn(),
+      playTransition: vi.fn(),
+      playCountdownBeep: vi.fn(),
+      setAlarmType: vi.fn(),
+      getAlarmType: vi.fn() as any,
+    };
     const service = new IntervalService({ rounds: 1, workMs: 1000, restMs: 500 }, undefined, mockAudio);
     service.start();
     

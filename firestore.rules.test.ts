@@ -3,21 +3,22 @@ import { readFileSync } from "fs";
 import { describe, it, beforeAll, afterAll } from "vitest";
 
 let testEnv: any;
+const describeWithEmulator = process.env.FIRESTORE_EMULATOR_HOST ? describe : describe.skip;
 
-beforeAll(async () => {
-  testEnv = await initializeTestEnvironment({
-    projectId: "demo-gym-test",
-    firestore: {
-      rules: readFileSync("DRAFT_firestore.rules", "utf8"),
-    },
+describeWithEmulator("Firestore Rules - Red Team Audit", () => {
+  beforeAll(async () => {
+    testEnv = await initializeTestEnvironment({
+      projectId: "demo-gym-test",
+      firestore: {
+        rules: readFileSync("firestore.rules", "utf8"),
+      },
+    });
   });
-});
 
-afterAll(async () => {
-  await testEnv.cleanup();
-});
+  afterAll(async () => {
+    await testEnv?.cleanup();
+  });
 
-describe("Firestore Rules - Red Team Audit", () => {
   // 1. Shadow Update
   it("Shadow Update Test: socio cannot add a ghost field", async () => {
     const db = testEnv.authenticatedContext("user123", { email_verified: true }).firestore();

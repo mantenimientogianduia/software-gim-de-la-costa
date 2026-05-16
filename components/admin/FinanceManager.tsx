@@ -4,12 +4,12 @@ import { financeService, Payment } from '@/services/finance.service';
 import { userService, UserProfile } from '@/services/user.service';
 import { Timestamp } from 'firebase/firestore';
 
-export default function FinanceManager() {
+export default function FinanceManager({ initialTab = 'history' }: { initialTab?: 'history' | 'expiring' }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expiringUsers, setExpiringUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [activeTab, setActiveTab] = useState<'history' | 'expiring'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'expiring'>(initialTab);
 
   const [formData, setFormData] = useState({
     userEmail: '',
@@ -35,6 +35,10 @@ export default function FinanceManager() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
