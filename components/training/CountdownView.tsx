@@ -25,7 +25,7 @@ export function CountdownView() {
     defaultAudioService.setAlarmType(alarmType);
     setTime(totalRequestedMs);
     setSetupMode(false);
-    setTimeout(start, 0);
+    start();
   };
 
   const handleTestAlarm = (type: AlarmType) => {
@@ -37,6 +37,7 @@ export function CountdownView() {
   };
 
   const handleReset = () => {
+    defaultAudioService.stopAll();
     reset();
     setSetupMode(true);
   };

@@ -94,6 +94,18 @@ describe('AudioService', () => {
     expect(playBeepSpy).toHaveBeenCalledWith(440, 0.1, 'sine', 0.3);
   });
 
+  it('should stop scheduled alarm beeps when dismissed', () => {
+    const playBeepSpy = vi.spyOn(audioService, 'playBeep');
+
+    audioService.playFinish();
+    expect(playBeepSpy).toHaveBeenCalledTimes(1);
+
+    audioService.stopAll();
+    vi.advanceTimersByTime(500);
+
+    expect(playBeepSpy).toHaveBeenCalledTimes(1);
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });

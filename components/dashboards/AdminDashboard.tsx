@@ -24,16 +24,20 @@ const navItems: Array<{ id: AdminTab; label: string; icon: string }> = [
 export default function AdminDashboard({ profile }: { profile: UserProfile }) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [financeInitialTab, setFinanceInitialTab] = useState<'history' | 'expiring'>('history');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const openTab = (tab: AdminTab) => {
     if (tab === 'finance') setFinanceInitialTab('history');
     setActiveTab(tab);
+    setIsMobileMenuOpen(false);
   };
 
   const openExpiringMemberships = () => {
     setFinanceInitialTab('expiring');
     setActiveTab('finance');
   };
+
+  const activeItem = navItems.find((item) => item.id === activeTab) ?? navItems[0];
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface text-on-surface">
@@ -77,32 +81,80 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
 
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
         <header className="bg-surface sticky top-0 z-50 px-4 md:px-6 py-4 border-b border-outline-variant/15 flex justify-between items-center">
-          <h1 className="font-headline text-xl md:text-2xl font-black uppercase tracking-tighter">
-            {activeTab === 'overview' ? 'Panel de Control'
-              : activeTab === 'users' ? 'Gestion de Socios'
-              : activeTab === 'access' ? 'Scanner de Entrada'
-              : activeTab === 'classes' ? 'Agenda de Clases'
-              : activeTab === 'routines' ? 'Editor de Rutinas'
-              : 'Finanzas'}
-          </h1>
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container-high text-primary ring-1 ring-outline-variant/20"
+              aria-label="Abrir menu de secciones"
+            >
+              <span className="material-symbols-outlined text-[22px]">menu</span>
+            </button>
+            <div className="min-w-0">
+              <h1 className="font-headline text-xl md:text-2xl font-black uppercase tracking-tighter truncate">
+                {activeTab === 'overview' ? 'Panel de Control'
+                  : activeTab === 'users' ? 'Gestion de Socios'
+                  : activeTab === 'access' ? 'Scanner de Entrada'
+                  : activeTab === 'classes' ? 'Agenda de Clases'
+                  : activeTab === 'routines' ? 'Editor de Rutinas'
+                  : 'Finanzas'}
+              </h1>
+              <div className="md:hidden mt-1 flex items-center gap-1.5 font-label text-[10px] font-black uppercase tracking-widest text-tertiary">
+                <span className="material-symbols-outlined text-[14px]">{activeItem.icon}</span>
+                {activeItem.label}
+              </div>
+            </div>
+          </div>
           <div className="w-10 h-10 rounded-sm bg-surface-container-high flex items-center justify-center font-label font-bold text-primary">
             {profile.firstName.charAt(0)}{profile.lastName.charAt(0)}
           </div>
         </header>
 
-        <nav className="md:hidden sticky top-[73px] z-40 flex gap-2 overflow-x-auto border-b border-outline-variant/15 bg-surface/95 px-4 py-3 backdrop-blur-xl no-scrollbar">
-          {navItems.map((item) => (
+        {isMobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Secciones de administracion">
             <button
-              key={item.id}
-              onClick={() => openTab(item.id)}
-              className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 transition-all ${activeTab === item.id ? 'bg-primary text-on-primary shadow-glow' : 'bg-surface-container-low text-tertiary'}`}
-              aria-label={item.label}
-            >
-              <span className={`material-symbols-outlined text-[20px] ${activeTab === item.id ? 'icon-fill' : ''}`}>{item.icon}</span>
-              <span className="font-label text-[10px] font-black uppercase tracking-widest">{item.label}</span>
-            </button>
-          ))}
-        </nav>
+              type="button"
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-label="Cerrar menu"
+            />
+            <div className="absolute inset-x-0 bottom-0 rounded-t-[28px] border border-outline-variant/20 bg-surface-container-low px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="font-label text-[10px] font-black uppercase tracking-[0.25em] text-tertiary">Secciones</p>
+                  <h2 className="mt-1 font-headline text-lg font-black uppercase tracking-tighter">Panel admin</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-container-high text-on-surface ring-1 ring-outline-variant/20"
+                  aria-label="Cerrar menu"
+                >
+                  <span className="material-symbols-outlined text-[22px]">close</span>
+                </button>
+              </div>
+
+              <nav className="grid grid-cols-2 gap-3">
+                {navItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openTab(item.id)}
+                    className={`flex min-h-20 flex-col items-start justify-between rounded-2xl p-4 text-left transition-all ring-1 ${
+                      activeTab === item.id
+                        ? 'bg-primary text-on-primary shadow-glow ring-white/20'
+                        : 'bg-surface-container-high text-tertiary ring-outline-variant/15'
+                    }`}
+                    aria-current={activeTab === item.id ? 'page' : undefined}
+                  >
+                    <span className={`material-symbols-outlined text-[24px] ${activeTab === item.id ? 'icon-fill' : ''}`}>{item.icon}</span>
+                    <span className="font-label text-[11px] font-black uppercase tracking-widest">{item.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
 
         <div className="p-4 md:p-10 flex flex-col gap-8 max-w-7xl mx-auto w-full">
           {activeTab === 'overview' && <AdminOverview onManageExpired={openExpiringMemberships} />}
