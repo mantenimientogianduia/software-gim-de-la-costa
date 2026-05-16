@@ -7,6 +7,7 @@ import { formatMs } from '@/lib/utils/time';
 import { Play, Pause, RotateCcw, Settings, CheckCircle2 } from 'lucide-react';
 import { CircularProgress, ControlButton } from './Shared';
 import { motion, AnimatePresence } from 'motion/react';
+import { defaultAudioService } from '@/services/AudioService';
 
 export function IntervalView() {
   const [config, setConfig] = useState<IntervalConfig | null>(null);
@@ -20,6 +21,7 @@ export function IntervalView() {
   const { state, start, pause, reset } = useIntervalWorkout(config);
 
   const handleStartWorkout = () => {
+    defaultAudioService.unlock();
     setConfig({ ...tempConfig });
   };
 

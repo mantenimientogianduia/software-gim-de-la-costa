@@ -10,6 +10,7 @@ export interface IAudioService {
   playFinish(): void;
   playTransition(): void;
   playCountdownBeep(): void;
+  unlock(): void;
   setAlarmType(type: AlarmType): void;
   getAlarmType(): AlarmType;
 }
@@ -39,6 +40,14 @@ export class AudioService implements IAudioService {
 
   public getAlarmType(): AlarmType {
     return this.alarmType;
+  }
+
+  public unlock(): void {
+    this.initContext();
+    if (!this.audioContext) return;
+
+    // Mobile browsers often require a direct user gesture before later timer sounds can play.
+    this.playBeep(220, 0.03, 'sine', 0.01);
   }
 
   public playBeep(frequency = 880, duration = 0.5, type: OscillatorType = 'sine', volume = 0.3): void {

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { TimerService, TimerStatus } from '@/services/TimerService';
+import { defaultAudioService } from '@/services/AudioService';
 
 export function useStopwatch() {
   const [status, setStatus] = useState<TimerStatus>({ isRunning: false, elapsedMs: 0 });
@@ -16,17 +17,20 @@ export function useStopwatch() {
   }, []);
 
   const start = useCallback(() => {
+    defaultAudioService.unlock();
     timerRef.current.start();
     update();
   }, [update]);
 
   const pause = useCallback(() => {
+    defaultAudioService.playTransition();
     timerRef.current.pause();
     setStatus(timerRef.current.getStatus());
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
   }, []);
 
   const reset = useCallback(() => {
+    defaultAudioService.playTransition();
     timerRef.current.reset();
     setStatus(timerRef.current.getStatus());
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
