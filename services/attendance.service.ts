@@ -9,8 +9,11 @@ import {
   where, 
   serverTimestamp, 
   updateDoc,
-  onSnapshot
+  onSnapshot,
+  setDoc,
+  deleteDoc
 } from 'firebase/firestore';
+import { buildPublicPresenceRecord } from '@/services/social.service';
 
 export interface AttendanceRecord {
   id?: string;
@@ -23,7 +26,7 @@ export interface AttendanceRecord {
 export class AttendanceService {
   private collectionRef = collection(db, 'attendance');
 
-  async checkIn(userId: string, userDocId: string): Promise<void> {
+  async checkIn(userId: string, userDocId: string, userProfile?: any): Promise<void> {
     // 1. Create attendance record
     await addDoc(this.collectionRef, {
       userId,
@@ -39,6 +42,17 @@ export class AttendanceService {
       currentActivity: 'Entrenando',
       updatedAt: serverTimestamp()
     });
+
+    const publicPresence = buildPublicPresenceRecord({ id: userDocId, ...userProfile });
+    const publicPresenceRef = doc(db, 'publicPresence', userDocId);
+    if (publicPresence) {
+      await setDoc(publicPresenceRef, {
+        ...publicPresence,
+        checkedInAt: serverTimestamp()
+      });
+    } else {
+      await deleteDoc(publicPresenceRef);
+    }
   }
 
   async checkOut(userId: string, userDocId: string): Promise<void> {
@@ -60,6 +74,8 @@ export class AttendanceService {
       currentActivity: '',
       updatedAt: serverTimestamp()
     });
+
+    await deleteDoc(doc(db, 'publicPresence', userDocId));
   }
 
   getLiveAttendance(callback: (users: any[]) => void) {

@@ -33,7 +33,7 @@ export default function QRScanner() {
       } else {
         const payments = await financeService.getUserPayments(user.email);
         const [finance] = calculateMemberFinanceSummaries({ users: [user], payments });
-        await attendanceService.checkIn(user.email, user.id);
+        await attendanceService.checkIn(user.email, user.id, user);
         if (finance?.financeStatus === 'moroso') {
           defaultAudioService.vibrate([300, 100, 300]);
           defaultAudioService.playBeep(180, 0.25, 'sawtooth', 0.35);
