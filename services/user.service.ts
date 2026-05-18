@@ -33,6 +33,10 @@ export interface UserProfile {
   goals?: string;
   weeklyTrainingGoal?: number;
   currentPlan?: string;
+  socialVisibility?: 'hidden' | 'visible' | 'anonymous';
+  instagram?: string;
+  publicBio?: string;
+  currentStreak?: number;
   createdAt: any;
   updatedAt: any;
 }
@@ -59,6 +63,10 @@ export class UserService {
       weeklyTrainingGoal: 3,
       currentPlan: 'Básico',
       phone: '',
+      socialVisibility: 'hidden',
+      instagram: '',
+      publicBio: '',
+      currentStreak: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -117,7 +125,7 @@ export class UserService {
     await updateDoc(userRef, { phone, updatedAt: serverTimestamp() });
   }
 
-  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName' | 'phone'>>): Promise<void> {
+  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName' | 'phone' | 'socialVisibility' | 'instagram' | 'publicBio'>>): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
   }

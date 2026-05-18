@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { UserProfile, userService } from '@/services/user.service';
 import { motion } from 'motion/react';
+import { normalizeInstagram } from '@/services/social.service';
 
 export default function PersonalInfo({ profile }: { profile: UserProfile & { id: string } }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -17,6 +18,9 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
     goals: profile.goals || '',
     weeklyTrainingGoal: profile.weeklyTrainingGoal || 3,
     currentPlan: profile.currentPlan || 'Básico',
+    socialVisibility: profile.socialVisibility || 'hidden',
+    instagram: profile.instagram || '',
+    publicBio: profile.publicBio || '',
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -26,7 +30,11 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
     setLoading(true);
     setSuccess(false);
     try {
-      await userService.updatePersonalInfo(profile.id, formData);
+      await userService.updatePersonalInfo(profile.id, {
+        ...formData,
+        socialVisibility: formData.socialVisibility as UserProfile['socialVisibility'],
+        instagram: normalizeInstagram(formData.instagram),
+      });
       setSuccess(true);
       setIsEditing(false);
     } catch (error) {
@@ -186,6 +194,66 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
                    className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
                    placeholder="Especifique otro..."
                  />
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Perfil social</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { value: 'hidden', label: 'No aparecer' },
+                  { value: 'visible', label: 'Aparecer con mi perfil' },
+                  { value: 'anonymous', label: 'Socio anonimo' },
+                ].map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, socialVisibility: option.value as any })}
+                    className={`p-4 rounded-xl border text-left font-label text-[10px] uppercase tracking-widest transition-all ${formData.socialVisibility === option.value ? 'bg-primary text-on-primary border-primary' : 'bg-surface-container-lowest border-outline-variant/20 text-tertiary'}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Instagram publico</label>
+              <input
+                type="text"
+                value={formData.instagram}
+                onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all"
+                placeholder="@usuario"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Descripcion publica</label>
+              <textarea
+                value={formData.publicBio}
+                onChange={(e) => setFormData({ ...formData, publicBio: e.target.value })}
+                maxLength={160}
+                className="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-3 text-sm focus:border-primary outline-none transition-all h-20 resize-none"
+                placeholder="Algo corto para que otros socios sepan quien sos..."
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Vista previa publica</label>
+              <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl p-5">
+                <p className="font-headline font-black uppercase tracking-tight">
+                  {formData.socialVisibility === 'anonymous' ? 'Socio anonimo' : `${formData.firstName} ${formData.lastName}`}
+                </p>
+                {formData.socialVisibility === 'visible' && normalizeInstagram(formData.instagram) && (
+                  <p className="font-label text-[10px] uppercase tracking-widest text-primary mt-1">{normalizeInstagram(formData.instagram)}</p>
+                )}
+                {formData.socialVisibility === 'visible' && formData.publicBio && (
+                  <p className="text-sm text-tertiary mt-3">{formData.publicBio}</p>
+                )}
+                {formData.socialVisibility === 'hidden' && (
+                  <p className="text-sm text-tertiary mt-2">No vas a aparecer en la seccion Comunidad.</p>
                 )}
               </div>
             </div>

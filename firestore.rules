@@ -41,7 +41,11 @@ service cloud.firestore {
                data.lastName is string && data.lastName.size() <= 100 &&
                data.status in ['active', 'inactive', 'pending'] &&
                (!('atGym' in data) || data.atGym is bool) &&
-               (!('currentActivity' in data) || data.currentActivity is string);
+               (!('currentActivity' in data) || data.currentActivity is string) &&
+               (!('phone' in data) || data.phone is string && data.phone.size() <= 40) &&
+               (!('socialVisibility' in data) || data.socialVisibility in ['hidden', 'visible', 'anonymous']) &&
+               (!('instagram' in data) || data.instagram is string && data.instagram.size() <= 40) &&
+               (!('publicBio' in data) || data.publicBio is string && data.publicBio.size() <= 180);
       }
 
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
@@ -54,7 +58,12 @@ service cloud.firestore {
                       (incoming().role == 'socio' && incoming().status == 'pending'));
 
       allow update: if isSignedIn() && (
-        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['firstName', 'lastName', 'currentActivity', 'updatedAt']) && isValidUser(incoming())) ||
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly([
+          'firstName', 'lastName', 'phone', 'weight', 'height', 'gender', 'otherSports',
+          'fitnessLevel', 'healthObservations', 'goals', 'weeklyTrainingGoal',
+          'currentPlan', 'currentActivity', 'socialVisibility', 'instagram',
+          'publicBio', 'updatedAt'
+        ]) && isValidUser(incoming())) ||
         (isAdmin() && isValidUser(incoming())) ||
         (isProfesor() && incoming().diff(existing()).affectedKeys().hasOnly(['atGym', 'currentActivity', 'lastCheckIn', 'updatedAt']) && isValidUser(incoming()))
       );
@@ -147,6 +156,24 @@ service cloud.firestore {
       allow read: if isSignedIn() && (isAdmin() || isProfesor() || resource.data.userId == request.auth.token.email);
       allow create: if isAdmin() || isProfesor();
       allow update: if (isAdmin() || isProfesor()) && isValidAttendance(incoming());
+    }
+
+    // --- Public Social Presence ---
+    match /publicPresence/{userId} {
+      function isValidPublicPresence(data) {
+        return data.keys().hasOnly(['id', 'displayName', 'socialVisibility', 'instagram', 'publicBio', 'currentStreak', 'checkedInAt']) &&
+               data.id == userId &&
+               data.displayName is string &&
+               data.displayName.size() <= 120 &&
+               data.socialVisibility in ['visible', 'anonymous'] &&
+               (!('instagram' in data) || data.instagram is string && data.instagram.size() <= 40) &&
+               (!('publicBio' in data) || data.publicBio is string && data.publicBio.size() <= 180) &&
+               (!('currentStreak' in data) || data.currentStreak is int);
+      }
+
+      allow read: if isSignedIn();
+      allow create, update: if (isAdmin() || isProfesor()) && isValidPublicPresence(incoming());
+      allow delete: if isAdmin() || isProfesor();
     }
   }
 }
