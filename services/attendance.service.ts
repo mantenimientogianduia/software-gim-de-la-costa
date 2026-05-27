@@ -26,13 +26,28 @@ export interface AttendanceRecord {
 export class AttendanceService {
   private collectionRef = collection(db, 'attendance');
 
+  private async hasOpenSession(userId: string): Promise<boolean> {
+    const q = query(this.collectionRef, where('userId', '==', userId), where('status', '==', 'present'));
+    const snap = await getDocs(q);
+    return !snap.empty;
+  }
+
   async checkIn(userId: string, userDocId: string, userProfile?: any): Promise<void> {
-    // 1. Create attendance record
-    await addDoc(this.collectionRef, {
-      userId,
-      checkInAt: serverTimestamp(),
-      status: 'present'
-    });
+    let shouldCreateAttendance = true;
+    try {
+      shouldCreateAttendance = !(await this.hasOpenSession(userId));
+    } catch (error) {
+      console.warn('No se pudo consultar si el socio ya tenia una sesion abierta.', error);
+    }
+
+    // 1. Create attendance record only if there is no open session
+    if (shouldCreateAttendance) {
+      await addDoc(this.collectionRef, {
+        userId,
+        checkInAt: serverTimestamp(),
+        status: 'present'
+      });
+    }
 
     // 2. Update user status
     const userRef = doc(db, 'users', userDocId);
