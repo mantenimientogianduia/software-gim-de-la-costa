@@ -20,27 +20,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { user, isNewUser } = await authService.loginWithGoogle();
-      const isAdminEmail = user.email === 'gino.pieretti00@gmail.com';
       
       let profile = await userService.getUserProfile(user.uid);
       
       if (!profile) {
-        if (isAdminEmail) {
-          // Admin doesn't necessarily need DNI immediately or can have a dummy one
-          await userService.createUserProfile(user.uid, user.email || '', 'Admin', 'Costa', 'admin', '00000000');
-          router.push('/dashboard');
-          return;
-        }
         setPendingUser(user);
         setNeedsDni(true);
       } else {
-        // Update user to admin if they are the bootstrapped admin but don't have the role yet
-        if (isAdminEmail && profile.role !== 'admin') {
-          profile.role = 'admin';
-          profile.status = 'active';
-          // Optionally update Firestore here, but for now we just allow entry
-        }
-
         if (profile.status === 'pending' && profile.role !== 'admin') {
           setIsPending(true);
         } else {

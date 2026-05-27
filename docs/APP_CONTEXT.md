@@ -67,8 +67,9 @@ La app compila y tiene tests utiles de servicios. Tambien existe una primera cap
 
 Riesgos actuales:
 
-- Algunos controles de debug/seed deben quedar deshabilitados por defecto en produccion.
+- Los controles de debug/seed quedan deshabilitados por defecto y solo se activan localmente con `NEXT_PUBLIC_ENABLE_DEV_TOOLS=true` y un email configurado.
 - Las reglas de Firestore necesitan ejecutarse con emulador en CI.
+- La app ya no debe crear administradores automaticamente por email; el primer admin se debe crear o promover de forma controlada desde Firebase/Firestore.
 - El modelo usa email como identificador en varias colecciones; a futuro conviene normalizar a UID/docId.
 - El QR actual se basa en DNI y deberia migrar a tokens rotativos.
 - Finanzas necesita mas auditoria, caja, reportes y controles de anulacion.

@@ -12,11 +12,9 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null && isEmailVerified(); }
     function isEmailVerified() { return request.auth.token.email_verified == true; }
     function isAdmin() { 
-      return isSignedIn() && (
-        request.auth.token.email == 'gino.pieretti00@gmail.com' || 
+      return isSignedIn() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     function isProfesor() {
       return isSignedIn() && 
@@ -70,11 +68,14 @@ service cloud.firestore {
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
       allow list: if isAdmin(); 
 
-      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && 
-                    incoming().email == request.auth.token.email &&
-                    (incoming().email == 'gino.pieretti00@gmail.com' ? 
-                      (incoming().role == 'admin' && incoming().status == 'active') : 
-                      (incoming().role == 'socio' && incoming().status == 'pending'));
+      allow create: if (
+        isSignedIn() && isOwner(userId) && isValidUser(incoming()) &&
+        incoming().email == request.auth.token.email &&
+        incoming().role == 'socio' &&
+        incoming().status == 'pending'
+      ) || (
+        isAdmin() && isValidUser(incoming())
+      );
 
       allow update: if isSignedIn() && (
         (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly([

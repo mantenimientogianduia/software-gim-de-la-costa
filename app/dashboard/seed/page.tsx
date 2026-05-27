@@ -3,9 +3,7 @@ import { useEffect, useState } from 'react';
 import { routineService, Exercise } from '@/services/routine.service';
 import { userService } from '@/services/user.service';
 import { useAuth } from '@/hooks/use-auth';
-
-const DEV_TOOLS_ENABLED = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === 'true';
-const DEV_EMAIL = 'gino.pieretti00@gmail.com';
+import { canUseDevTools } from '@/lib/app-config';
 
 const COMMON_EXERCISES: Exercise[] = [
   { name: 'Sentadilla con Barra', prescribed: { sets: 3, reps: '8-10', load: 'RPE 8' }, notes: 'Foco en profundidad y control' },
@@ -210,7 +208,7 @@ export default function SeedPage() {
     }
   };
 
-  if (!DEV_TOOLS_ENABLED || user?.email !== DEV_EMAIL) return <div>Acceso denegado</div>;
+  if (!canUseDevTools(user?.email)) return <div>Acceso denegado</div>;
 
   return (
     <div className="p-20 bg-surface min-h-screen text-white font-mono">
