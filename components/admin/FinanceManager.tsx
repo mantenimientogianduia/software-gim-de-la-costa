@@ -241,49 +241,77 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
   };
 
   const plansSettings = (
-    <div className="bg-surface-container-low p-6 rounded-lg ghost-border">
-      <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <div>
-          <h3 className="font-headline font-bold text-xl uppercase tracking-tight italic">Configuracion de Cuotas y Planes</h3>
-          <p className="mt-2 font-body text-sm text-tertiary">Edita el precio de la cuota y arma packs de meses con descuento.</p>
+    <div className="bg-surface-container-low p-4 sm:p-6 rounded-lg ghost-border">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <h3 className="font-headline font-bold text-xl sm:text-2xl uppercase tracking-tight italic leading-tight">
+            Configuracion de Cuotas y Planes
+          </h3>
+          <p className="mt-2 max-w-xl font-body text-sm text-tertiary">
+            Edita el precio de la cuota y arma packs de meses con descuento.
+          </p>
         </div>
         <button
           type="button"
           onClick={() => setPlanForm({ id: '', name: '', months: 1, price: 0 })}
-          className="self-start md:self-auto bg-surface-container-highest px-4 py-3 rounded font-label text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all"
+          className="w-full sm:w-auto bg-surface-container-highest px-5 py-3 rounded font-label text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all"
         >
           Nuevo Plan
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 xl:items-start">
+        <div className="min-w-0">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h4 className="font-label text-[10px] font-black uppercase tracking-widest text-tertiary">Planes activos</h4>
+            <span className="rounded-full bg-surface-container-highest px-3 py-1 font-mono text-[10px] text-tertiary">
+              {paymentPlans.length}
+            </span>
+          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {paymentPlans.map(plan => (
             <button
               key={plan.id}
               type="button"
               onClick={() => setPlanForm({ id: plan.id, name: plan.name, months: plan.months, price: plan.price })}
-              className="text-left bg-surface-container-high p-5 rounded-lg border border-outline-variant/10 hover:border-primary transition-colors"
+              className={`min-h-[150px] text-left bg-surface-container-high p-5 rounded-lg border transition-colors ${
+                planForm.id === plan.id
+                  ? 'border-primary shadow-[0_0_0_1px_rgba(255,171,145,0.35)]'
+                  : 'border-outline-variant/10 hover:border-primary/70'
+              }`}
             >
               <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">{plan.months} meses</p>
-              <p className="mt-2 font-headline font-bold uppercase tracking-tight text-lg">{plan.name}</p>
+              <p className="mt-2 font-headline font-bold uppercase tracking-tight text-lg leading-tight">{plan.name}</p>
               <p className="mt-3 font-mono font-black text-2xl text-primary">${plan.price.toLocaleString()}</p>
             </button>
           ))}
         </div>
+        </div>
 
-        <form onSubmit={handleSavePlan} className="bg-surface-container-high p-5 rounded-lg border border-outline-variant/10 space-y-3">
-          <h4 className="font-label text-[10px] font-black uppercase tracking-widest text-tertiary">
-            {planForm.id ? 'Editar plan' : 'Crear plan'}
-          </h4>
-          <input
-            required
-            placeholder="Nombre del plan"
-            value={planForm.name}
-            onChange={e => setPlanForm({ ...planForm, name: e.target.value })}
-            className="w-full bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
-          />
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSavePlan} className="min-w-0 bg-surface-container-high p-4 sm:p-5 rounded-lg border border-outline-variant/10 space-y-4 xl:sticky xl:top-4">
+          <div className="border-b border-outline-variant/10 pb-4">
+            <h4 className="font-label text-[10px] font-black uppercase tracking-widest text-tertiary">
+              {planForm.id ? 'Editar plan' : 'Crear plan'}
+            </h4>
+            <p className="mt-2 font-body text-xs text-tertiary">
+              Selecciona un plan para editarlo o crea uno nuevo desde cero.
+            </p>
+          </div>
+
+          <label className="block">
+            <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Nombre</span>
+            <input
+              required
+              placeholder="Nombre del plan"
+              value={planForm.name}
+              onChange={e => setPlanForm({ ...planForm, name: e.target.value })}
+              className="w-full bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
+            />
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Meses</span>
             <input
               required
               type="number"
@@ -291,8 +319,11 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
               placeholder="Meses"
               value={planForm.months}
               onChange={e => setPlanForm({ ...planForm, months: Number(e.target.value) })}
-              className="bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
+              className="w-full bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
             />
+            </label>
+            <label className="block">
+              <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Precio</span>
             <input
               required
               type="number"
@@ -300,13 +331,14 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
               placeholder="Precio"
               value={planForm.price}
               onChange={e => setPlanForm({ ...planForm, price: Number(e.target.value) })}
-              className="bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
+              className="w-full bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
             />
+            </label>
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-on-primary py-3 rounded font-label text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+            className="w-full bg-primary text-on-primary py-4 rounded font-label text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
           >
             Guardar Plan
           </button>
