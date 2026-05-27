@@ -5,23 +5,50 @@ import { attendanceService } from '@/services/attendance.service';
 import { userService } from '@/services/user.service';
 import { calculateMemberFinanceSummaries, financeService } from '@/services/finance.service';
 import { defaultAudioService } from '@/services/AudioService';
+import {
+  formatAccessError,
+  normalizeAccessIdentifier,
+  shouldIgnoreRepeatedAccess,
+} from '@/services/access.service';
 
 export default function QRScanner() {
   const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'warning' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastAccessRef = useRef<{ identifier: string | null; processedAt: number }>({
+    identifier: null,
+    processedAt: 0,
+  });
 
   const handleAccess = async (identifier: string) => {
-    if (!identifier || status === 'processing') return;
+    const normalizedIdentifier = normalizeAccessIdentifier(identifier);
+    if (!normalizedIdentifier || status === 'processing') return;
+
+    const nowMs = Date.now();
+    if (
+      shouldIgnoreRepeatedAccess({
+        identifier: normalizedIdentifier,
+        lastIdentifier: lastAccessRef.current.identifier,
+        lastProcessedAtMs: lastAccessRef.current.processedAt,
+        nowMs,
+      })
+    ) {
+      return;
+    }
+
+    lastAccessRef.current = {
+      identifier: normalizedIdentifier,
+      processedAt: nowMs,
+    };
     
     setStatus('processing');
-    setMessage('Verificando DNI: ' + identifier);
+    setMessage('Verificando DNI: ' + normalizedIdentifier);
     
     try {
-      const user = await userService.getUserByDni(identifier);
+      const user = await userService.getUserByDni(normalizedIdentifier);
       if (!user) {
          setStatus('error');
-         setMessage('Socio no encontrado (DNI: ' + identifier + ')');
+         setMessage('Socio no encontrado (DNI: ' + normalizedIdentifier + ')');
          setTimeout(() => setStatus('idle'), 3000);
          return;
       }
@@ -56,7 +83,7 @@ export default function QRScanner() {
     } catch (err) {
       console.error(err);
       setStatus('error');
-      setMessage('Error al procesar acceso');
+      setMessage(formatAccessError(err));
       setTimeout(() => setStatus('idle'), 3000);
     }
   };
