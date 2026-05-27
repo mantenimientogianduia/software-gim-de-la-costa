@@ -9,7 +9,7 @@ service cloud.firestore {
     }
 
     // 3. Global Helpers
-    function isSignedIn() { return request.auth != null; }
+    function isSignedIn() { return request.auth != null && isEmailVerified(); }
     function isEmailVerified() { return request.auth.token.email_verified == true; }
     function isAdmin() { 
       return isSignedIn() && (
@@ -35,17 +35,36 @@ service cloud.firestore {
     match /users/{userId} {
       function isValidUser(data) {
         return data.keys().hasAll(['email', 'role', 'firstName', 'lastName', 'status']) &&
+               data.keys().hasOnly([
+                 'dni', 'email', 'role', 'firstName', 'lastName', 'status',
+                 'atGym', 'currentActivity', 'lastCheckIn', 'membershipValidUntil',
+                 'lastPaymentDate', 'phone', 'weight', 'height', 'gender',
+                 'otherSports', 'fitnessLevel', 'healthObservations', 'goals',
+                 'weeklyTrainingGoal', 'currentPlan', 'socialVisibility',
+                 'instagram', 'publicBio', 'currentStreak', 'createdAt', 'updatedAt'
+               ]) &&
                data.email is string && data.email.size() <= 256 &&
                data.role in ['admin', 'profesor', 'socio'] &&
                data.firstName is string && data.firstName.size() <= 100 &&
                data.lastName is string && data.lastName.size() <= 100 &&
                data.status in ['active', 'inactive', 'pending'] &&
+               (!('dni' in data) || data.dni is string && data.dni.size() <= 40) &&
                (!('atGym' in data) || data.atGym is bool) &&
                (!('currentActivity' in data) || data.currentActivity is string) &&
                (!('phone' in data) || data.phone is string && data.phone.size() <= 40) &&
+               (!('weight' in data) || data.weight is number) &&
+               (!('height' in data) || data.height is number) &&
+               (!('gender' in data) || data.gender in ['masculino', 'femenino', 'otro']) &&
+               (!('otherSports' in data) || data.otherSports is string && data.otherSports.size() <= 500) &&
+               (!('fitnessLevel' in data) || data.fitnessLevel in ['principiante', 'intermedio', 'avanzado']) &&
+               (!('healthObservations' in data) || data.healthObservations is string && data.healthObservations.size() <= 1000) &&
+               (!('goals' in data) || data.goals is string && data.goals.size() <= 1000) &&
+               (!('weeklyTrainingGoal' in data) || data.weeklyTrainingGoal is int && data.weeklyTrainingGoal >= 0 && data.weeklyTrainingGoal <= 14) &&
+               (!('currentPlan' in data) || data.currentPlan is string && data.currentPlan.size() <= 120) &&
                (!('socialVisibility' in data) || data.socialVisibility in ['hidden', 'visible', 'anonymous']) &&
                (!('instagram' in data) || data.instagram is string && data.instagram.size() <= 40) &&
-               (!('publicBio' in data) || data.publicBio is string && data.publicBio.size() <= 180);
+               (!('publicBio' in data) || data.publicBio is string && data.publicBio.size() <= 180) &&
+               (!('currentStreak' in data) || data.currentStreak is int && data.currentStreak >= 0);
       }
 
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());

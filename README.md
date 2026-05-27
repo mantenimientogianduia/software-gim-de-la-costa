@@ -1,20 +1,60 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Gym Costa Pro
 
-# Run and deploy your AI Studio app
+ERP web para operar un gimnasio: socios, accesos, clases, rutinas, finanzas, cuotas, vencimientos y comunidad.
 
-This contains everything you need to run your app locally.
+## Stack
 
-View your app in AI Studio: https://ai.studio/apps/8c9c7e76-ae15-448a-9986-d0f0e1f18872
+- Next.js 15 + React 19
+- Firebase Auth + Cloud Firestore
+- Tailwind CSS
+- Vitest + Testing Library
+- Firebase Emulator para reglas de Firestore
 
-## Run Locally
+## Ejecutar Localmente
 
-**Prerequisites:**  Node.js
+1. Instalar dependencias:
 
+```bash
+npm install
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+2. Copiar `.env.example` a `.env.local` y completar `NEXT_PUBLIC_FIREBASE_CONFIG`.
+
+3. Levantar la app:
+
+```bash
+npm run dev
+```
+
+## Verificacion
+
+```bash
+npm run test
+npm run lint
+npm run build
+```
+
+Para verificar reglas de Firestore con emulador:
+
+```bash
+npm run test:rules
+```
+
+Este comando requiere Java instalado y disponible en `PATH`, porque Firebase Emulator lo usa para levantar Firestore local.
+
+## Firebase y Vercel
+
+En Vercel se debe configurar `NEXT_PUBLIC_FIREBASE_CONFIG` como JSON string con los datos del proyecto Firebase.
+
+Tambien hay que autorizar el dominio productivo en Firebase Console:
+
+1. Authentication
+2. Settings
+3. Authorized domains
+4. Agregar el dominio de Vercel
+
+## Notas De Seguridad
+
+- Las reglas de Firestore deben probarse con `npm run test:rules` antes de desplegar cambios de permisos.
+- Los datos sensibles de socios no deben exponerse a otros socios.
+- Las herramientas de debug deben estar deshabilitadas en produccion.
