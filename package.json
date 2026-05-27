@@ -1,5 +1,5 @@
 {
-  "name": "ai-studio-applet",
+  "name": "gym-costa-pro",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only firestore \"vitest run firestore.rules.test.ts\"",
     "clean": "next clean"
   },
   "dependencies": {

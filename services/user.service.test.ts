@@ -3,7 +3,7 @@ import { UserService } from './user.service';
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(),
-  doc: vi.fn(),
+  doc: vi.fn((...path) => ({ path })),
   setDoc: vi.fn(),
   getDoc: vi.fn(),
   serverTimestamp: vi.fn(() => 'MOCK_TIMESTAMP'),
@@ -27,5 +27,9 @@ describe('UserService', () => {
     
     expect(setDoc).toHaveBeenCalled();
     expect(doc).toHaveBeenCalled();
+    expect(setDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      currentPlan: 'Básico',
+      socialVisibility: 'hidden',
+    }));
   });
 });

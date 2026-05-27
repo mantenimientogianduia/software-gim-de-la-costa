@@ -12,6 +12,7 @@ import RoleSwitcher from '@/components/debug/RoleSwitcher';
 type UserRole = 'admin' | 'profesor' | 'socio';
 
 const DEV_EMAIL = 'gino.pieretti00@gmail.com';
+const devToolsEnabled = process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === 'true';
 
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
@@ -22,7 +23,7 @@ export default function DashboardPage() {
     if (!loading && !user) {
       router.push('/login');
     }
-    if (!loading && profile && profile.status === 'pending' && profile.role !== 'admin' && user?.email !== DEV_EMAIL) {
+    if (!loading && profile && profile.status === 'pending' && profile.role !== 'admin' && !(devToolsEnabled && user?.email === DEV_EMAIL)) {
       router.push('/login');
     }
   }, [user, profile, loading, router]);
@@ -35,12 +36,12 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user || !profile || (profile.status === 'pending' && profile.role !== 'admin' && user.email !== DEV_EMAIL)) {
+  if (!user || !profile || (profile.status === 'pending' && profile.role !== 'admin' && !(devToolsEnabled && user.email === DEV_EMAIL))) {
     return null; 
   }
 
   const activeRole = overrideRole || (profile.role as UserRole);
-  const isDev = user.email === DEV_EMAIL;
+  const isDev = devToolsEnabled && user.email === DEV_EMAIL;
 
   const renderDashboard = () => {
     if (!profile || !user) return null;
