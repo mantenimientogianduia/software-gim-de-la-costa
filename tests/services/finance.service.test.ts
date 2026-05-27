@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildPaymentsCsv,
   buildContactLinks,
+  calculateCashflowSummary,
   calculateMembershipRenewalDate,
   calculateMemberFinanceSummaries,
   recalculateMembershipFromPayments,
@@ -126,5 +128,48 @@ describe('buildContactLinks', () => {
 
     expect(links.whatsapp).toContain('https://wa.me/5491112345678');
     expect(links.email).toContain('mailto:ana@test.com');
+  });
+});
+
+describe('calculateCashflowSummary', () => {
+  it('excludes cancelled payments and groups confirmed revenue by method', () => {
+    const summary = calculateCashflowSummary([
+      { id: 'p1', userId: 'a@test.com', userName: 'Ana Test', amount: 40000, paymentMethod: 'cash', concept: 'Cuota normal', monthsPaid: 1, paymentDate: ts('2026-05-10'), validUntil: ts('2026-06-10'), status: 'confirmed' },
+      { id: 'p2', userId: 'b@test.com', userName: 'Beto Test', amount: 100000, paymentMethod: 'transfer', concept: 'Combo 3 cuotas', monthsPaid: 3, paymentDate: ts('2026-05-11'), validUntil: ts('2026-08-11'), status: 'confirmed' },
+      { id: 'p3', userId: 'c@test.com', userName: 'Cancelado Test', amount: 40000, paymentMethod: 'cash', concept: 'Cuota normal', monthsPaid: 1, paymentDate: ts('2026-05-12'), validUntil: ts('2026-06-12'), status: 'cancelled' },
+    ]);
+
+    expect(summary.totalRevenue).toBe(140000);
+    expect(summary.confirmedPaymentsCount).toBe(2);
+    expect(summary.cancelledPaymentsCount).toBe(1);
+    expect(summary.byMethod.cash.total).toBe(40000);
+    expect(summary.byMethod.transfer.total).toBe(100000);
+  });
+});
+
+describe('buildPaymentsCsv', () => {
+  it('exports payments with audit fields without dropping cancelled records', () => {
+    const csv = buildPaymentsCsv([
+      {
+        id: 'p1',
+        userId: 'ana@test.com',
+        userName: 'Ana Test',
+        amount: 40000,
+        paymentMethod: 'cash',
+        concept: 'Cuota normal',
+        monthsPaid: 1,
+        paymentDate: ts('2026-05-10'),
+        validUntil: ts('2026-06-10'),
+        status: 'cancelled',
+        cancelReason: 'Carga duplicada',
+        cancelledBy: 'admin@test.com',
+        cancelledAt: ts('2026-05-11'),
+      },
+    ]);
+
+    expect(csv).toContain('estado');
+    expect(csv).toContain('cancelled');
+    expect(csv).toContain('Carga duplicada');
+    expect(csv).toContain('admin@test.com');
   });
 });

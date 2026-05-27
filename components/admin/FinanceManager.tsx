@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  buildPaymentsCsv,
   buildContactLinks,
+  calculateCashflowSummary,
   calculateMemberFinanceSummaries,
   calculateMembershipRenewalDate,
   DEFAULT_PAYMENT_PLANS,
@@ -79,6 +81,8 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
       operationalDebt: memberSummaries.filter(member => member.financeStatus === 'moroso').length * (paymentPlans[0]?.price ?? 0),
     };
   }, [memberSummaries, payments, paymentPlans]);
+
+  const cashflowSummary = useMemo(() => calculateCashflowSummary(payments), [payments]);
 
   const filteredMembers = useMemo(() => {
     return memberSummaries.filter(member => {
@@ -223,6 +227,17 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExportPayments = () => {
+    const csv = buildPaymentsCsv(payments);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `pagos-gym-costa-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const plansSettings = (
@@ -455,6 +470,7 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
             <KpiCard label="Pagos del mes" value={financeKpis.monthPayments} />
             <KpiCard label="Ingresos del mes" value={`$${financeKpis.monthRevenue.toLocaleString()}`} />
           </div>
+          <CashflowPanel summary={cashflowSummary} />
           <MemberFinanceTable
             members={filteredMembers}
             filter={financeFilter}
@@ -493,7 +509,7 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
         <CommunicationsQueue members={memberSummaries.filter(member => member.financeStatus !== 'activo')} />
       )}
       {activeTab === 'history' && (
-        <PaymentsHistory payments={payments} onCancelPayment={handleCancelPayment} />
+        <PaymentsHistory payments={payments} onCancelPayment={handleCancelPayment} onExportPayments={handleExportPayments} />
       )}
     </div>
   );
@@ -513,6 +529,43 @@ function KpiCard({ label, value, tone = 'default' }: { label: string; value: str
       <p className="font-label text-[9px] uppercase tracking-widest text-tertiary mb-2">{label}</p>
       <p className="font-headline text-2xl font-black">{value}</p>
     </div>
+  );
+}
+
+function CashflowPanel({ summary }: { summary: ReturnType<typeof calculateCashflowSummary> }) {
+  const activeMethods = Object.values(summary.byMethod).filter(item => item.count > 0);
+
+  return (
+    <section className="bg-surface-container-low rounded-lg ghost-border overflow-hidden">
+      <div className="p-5 border-b border-outline-variant/10 flex flex-col md:flex-row md:items-end md:justify-between gap-2">
+        <div>
+          <h3 className="font-headline text-xl font-black uppercase tracking-tight italic">Caja y Metodos de Pago</h3>
+          <p className="mt-1 text-sm text-tertiary">Solo cuenta pagos confirmados; los anulados quedan fuera del total y se informan aparte.</p>
+        </div>
+        <div className="font-label text-[10px] uppercase tracking-widest text-tertiary">
+          {summary.confirmedPaymentsCount} pagos confirmados · {summary.cancelledPaymentsCount} anulados
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-0">
+        <div className="p-6 border-b md:border-b-0 md:border-r border-outline-variant/10">
+          <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Ingreso total confirmado</p>
+          <p className="mt-3 font-headline text-4xl font-black text-primary">${summary.totalRevenue.toLocaleString()}</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 p-4">
+          {activeMethods.length > 0 ? activeMethods.map(item => (
+            <div key={item.method} className="bg-surface-container-high p-4 rounded border border-outline-variant/10">
+              <p className="font-label text-[9px] uppercase tracking-widest text-tertiary">{PAYMENT_METHOD_LABELS[item.method]}</p>
+              <p className="mt-2 font-mono text-xl font-black">${item.total.toLocaleString()}</p>
+              <p className="mt-1 text-[10px] text-tertiary">{item.count} pago(s)</p>
+            </div>
+          )) : (
+            <div className="col-span-full py-10 text-center text-tertiary font-label text-[10px] uppercase tracking-widest">
+              Sin ingresos confirmados
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -684,9 +737,32 @@ function CommunicationsQueue({ members }: { members: MemberFinanceSummary[] }) {
   );
 }
 
-function PaymentsHistory({ payments, onCancelPayment }: { payments: Payment[]; onCancelPayment: (payment: Payment) => void }) {
+function PaymentsHistory({
+  payments,
+  onCancelPayment,
+  onExportPayments,
+}: {
+  payments: Payment[];
+  onCancelPayment: (payment: Payment) => void;
+  onExportPayments: () => void;
+}) {
   return (
-    <div className="bg-surface-container-low rounded-lg overflow-x-auto ghost-border">
+    <div className="bg-surface-container-low rounded-lg overflow-hidden ghost-border">
+      <div className="p-5 border-b border-outline-variant/10 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h3 className="font-headline text-xl font-black uppercase tracking-tight italic">Historial de Pagos</h3>
+          <p className="mt-1 text-sm text-tertiary">Incluye pagos confirmados y anulados para auditoria.</p>
+        </div>
+        <button
+          type="button"
+          onClick={onExportPayments}
+          disabled={payments.length === 0}
+          className="bg-surface-container-highest px-4 py-3 rounded font-label text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary disabled:opacity-40 disabled:hover:bg-surface-container-highest disabled:hover:text-current transition-all"
+        >
+          Exportar CSV
+        </button>
+      </div>
+      <div className="overflow-x-auto">
       <table className="w-full min-w-[1040px] text-left border-collapse">
         <thead>
           <tr className="bg-surface-container-highest/30 border-b border-outline-variant/15">
@@ -735,6 +811,7 @@ function PaymentsHistory({ payments, onCancelPayment }: { payments: Payment[]; o
           <p className="font-label uppercase tracking-widest text-xs">No hay historial de pagos</p>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -74,6 +74,19 @@ export interface MemberFinanceSummary {
   paymentsCount: number;
 }
 
+export interface PaymentMethodCashflow {
+  method: PaymentMethod;
+  total: number;
+  count: number;
+}
+
+export interface CashflowSummary {
+  totalRevenue: number;
+  confirmedPaymentsCount: number;
+  cancelledPaymentsCount: number;
+  byMethod: Record<PaymentMethod, PaymentMethodCashflow>;
+}
+
 function toDate(value: any): Date | null {
   if (!value) return null;
   if (value instanceof Date) return value;
@@ -217,6 +230,78 @@ export function buildContactLinks({
     label: `${firstName} ${lastName}`,
     message,
   };
+}
+
+export function calculateCashflowSummary(payments: Payment[]): CashflowSummary {
+  const byMethod = PAYMENT_METHODS.reduce((acc, method) => {
+    acc[method] = { method, total: 0, count: 0 };
+    return acc;
+  }, {} as Record<PaymentMethod, PaymentMethodCashflow>);
+
+  const confirmed = payments.filter(payment => payment.status === 'confirmed');
+
+  for (const payment of confirmed) {
+    const method = payment.paymentMethod || 'cash';
+    byMethod[method].total += payment.amount || 0;
+    byMethod[method].count += 1;
+  }
+
+  return {
+    totalRevenue: confirmed.reduce((sum, payment) => sum + (payment.amount || 0), 0),
+    confirmedPaymentsCount: confirmed.length,
+    cancelledPaymentsCount: payments.filter(payment => payment.status === 'cancelled').length,
+    byMethod,
+  };
+}
+
+function formatCsvDate(value: any): string {
+  const date = toDate(value);
+  return date ? date.toISOString().slice(0, 10) : '';
+}
+
+function csvCell(value: unknown): string {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+export function buildPaymentsCsv(payments: Payment[]): string {
+  const headers = [
+    'id',
+    'fecha_pago',
+    'socio',
+    'email',
+    'concepto',
+    'metodo',
+    'meses',
+    'monto',
+    'vence_hasta',
+    'estado',
+    'notas',
+    'motivo_anulacion',
+    'anulado_por',
+    'fecha_anulacion',
+  ];
+
+  const rows = payments.map(payment => [
+    payment.id,
+    formatCsvDate(payment.paymentDate),
+    payment.userName,
+    payment.userId,
+    payment.concept,
+    payment.paymentMethod || 'cash',
+    payment.monthsPaid,
+    payment.amount,
+    formatCsvDate(payment.validUntil),
+    payment.status,
+    payment.notes,
+    payment.cancelReason,
+    payment.cancelledBy,
+    formatCsvDate(payment.cancelledAt),
+  ]);
+
+  return [headers, ...rows]
+    .map(row => row.map(csvCell).join(','))
+    .join('\n');
 }
 
 export async function loadFinanceDashboardData(service: Pick<FinanceService, 'getAllPayments' | 'getPaymentPlans' | 'getExpiringMemberships'>) {
