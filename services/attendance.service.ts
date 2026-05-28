@@ -3,7 +3,6 @@ import {
   collection, 
   doc, 
   addDoc, 
-  getDoc, 
   getDocs, 
   query, 
   where, 
@@ -32,6 +31,32 @@ export class AttendanceService {
     return !snap.empty;
   }
 
+  private async syncPublicPresence(userDocId: string, userProfile?: any): Promise<void> {
+    const publicPresence = buildPublicPresenceRecord({ id: userDocId, ...userProfile });
+    const publicPresenceRef = doc(db, 'publicPresence', userDocId);
+
+    try {
+      if (publicPresence) {
+        await setDoc(publicPresenceRef, {
+          ...publicPresence,
+          checkedInAt: serverTimestamp()
+        });
+      } else {
+        await deleteDoc(publicPresenceRef);
+      }
+    } catch (error) {
+      console.warn('No se pudo sincronizar la presencia publica del socio.', error);
+    }
+  }
+
+  private async clearPublicPresence(userDocId: string): Promise<void> {
+    try {
+      await deleteDoc(doc(db, 'publicPresence', userDocId));
+    } catch (error) {
+      console.warn('No se pudo limpiar la presencia publica del socio.', error);
+    }
+  }
+
   async checkIn(userId: string, userDocId: string, userProfile?: any): Promise<void> {
     let shouldCreateAttendance = true;
     try {
@@ -40,7 +65,6 @@ export class AttendanceService {
       console.warn('No se pudo consultar si el socio ya tenia una sesion abierta.', error);
     }
 
-    // 1. Create attendance record only if there is no open session
     if (shouldCreateAttendance) {
       await addDoc(this.collectionRef, {
         userId,
@@ -49,7 +73,6 @@ export class AttendanceService {
       });
     }
 
-    // 2. Update user status
     const userRef = doc(db, 'users', userDocId);
     await updateDoc(userRef, {
       atGym: true,
@@ -58,31 +81,24 @@ export class AttendanceService {
       updatedAt: serverTimestamp()
     });
 
-    const publicPresence = buildPublicPresenceRecord({ id: userDocId, ...userProfile });
-    const publicPresenceRef = doc(db, 'publicPresence', userDocId);
-    if (publicPresence) {
-      await setDoc(publicPresenceRef, {
-        ...publicPresence,
-        checkedInAt: serverTimestamp()
-      });
-    } else {
-      await deleteDoc(publicPresenceRef);
-    }
+    await this.syncPublicPresence(userDocId, userProfile);
   }
 
   async checkOut(userId: string, userDocId: string): Promise<void> {
-    // 1. Find active record
-    const q = query(this.collectionRef, where('userId', '==', userId), where('status', '==', 'present'));
-    const snap = await getDocs(q);
-    
-    for (const recordDoc of snap.docs) {
-      await updateDoc(recordDoc.ref, {
-        status: 'completed',
-        checkOutAt: serverTimestamp()
-      });
+    try {
+      const q = query(this.collectionRef, where('userId', '==', userId), where('status', '==', 'present'));
+      const snap = await getDocs(q);
+      
+      for (const recordDoc of snap.docs) {
+        await updateDoc(recordDoc.ref, {
+          status: 'completed',
+          checkOutAt: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      console.warn('No se pudo cerrar la asistencia abierta del socio.', error);
     }
 
-    // 2. Update user status
     const userRef = doc(db, 'users', userDocId);
     await updateDoc(userRef, {
       atGym: false,
@@ -90,7 +106,7 @@ export class AttendanceService {
       updatedAt: serverTimestamp()
     });
 
-    await deleteDoc(doc(db, 'publicPresence', userDocId));
+    await this.clearPublicPresence(userDocId);
   }
 
   getLiveAttendance(callback: (users: any[]) => void) {

@@ -92,6 +92,16 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     });
   }, [financeFilter, memberSummaries]);
 
+  const paymentUserOptions = useMemo(() => {
+    return [...users]
+      .filter(user => user.role === 'socio')
+      .sort((a, b) => `${a.firstName} ${a.lastName}`.localeCompare(`${b.firstName} ${b.lastName}`));
+  }, [users]);
+
+  const selectedPaymentMember = useMemo(() => {
+    return memberSummaries.find(member => member.email === formData.userEmail);
+  }, [formData.userEmail, memberSummaries]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -240,50 +250,83 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     URL.revokeObjectURL(url);
   };
 
+  const openPaymentRecorder = (email = '') => {
+    setIsRecording(true);
+    setFormData(prev => ({ ...prev, userEmail: email }));
+  };
+
   const plansSettings = (
-    <div className="bg-surface-container-low p-6 rounded-lg ghost-border">
-      <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <div>
-          <h3 className="font-headline font-bold text-xl uppercase tracking-tight italic">Configuracion de Cuotas y Planes</h3>
-          <p className="mt-2 font-body text-sm text-tertiary">Edita el precio de la cuota y arma packs de meses con descuento.</p>
+    <div className="bg-surface-container-low p-4 sm:p-6 rounded-lg ghost-border">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <h3 className="font-headline font-bold text-xl sm:text-2xl uppercase tracking-tight italic leading-tight">
+            Configuracion de Cuotas y Planes
+          </h3>
+          <p className="mt-2 max-w-xl font-body text-sm text-tertiary">
+            Edita el precio de la cuota y arma packs de meses con descuento.
+          </p>
         </div>
         <button
           type="button"
           onClick={() => setPlanForm({ id: '', name: '', months: 1, price: 0 })}
-          className="self-start md:self-auto bg-surface-container-highest px-4 py-3 rounded font-label text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all"
+          className="w-full sm:w-auto bg-surface-container-highest px-5 py-3 rounded font-label text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all"
         >
           Nuevo Plan
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_380px] gap-6 xl:items-start">
+        <div className="min-w-0">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h4 className="font-label text-[10px] font-black uppercase tracking-widest text-tertiary">Planes activos</h4>
+            <span className="rounded-full bg-surface-container-highest px-3 py-1 font-mono text-[10px] text-tertiary">
+              {paymentPlans.length}
+            </span>
+          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {paymentPlans.map(plan => (
             <button
               key={plan.id}
               type="button"
               onClick={() => setPlanForm({ id: plan.id, name: plan.name, months: plan.months, price: plan.price })}
-              className="text-left bg-surface-container-high p-5 rounded-lg border border-outline-variant/10 hover:border-primary transition-colors"
+              className={`min-h-[150px] text-left bg-surface-container-high p-5 rounded-lg border transition-colors ${
+                planForm.id === plan.id
+                  ? 'border-primary shadow-[0_0_0_1px_rgba(255,171,145,0.35)]'
+                  : 'border-outline-variant/10 hover:border-primary/70'
+              }`}
             >
               <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">{plan.months} meses</p>
-              <p className="mt-2 font-headline font-bold uppercase tracking-tight text-lg">{plan.name}</p>
+              <p className="mt-2 font-headline font-bold uppercase tracking-tight text-lg leading-tight">{plan.name}</p>
               <p className="mt-3 font-mono font-black text-2xl text-primary">${plan.price.toLocaleString()}</p>
             </button>
           ))}
         </div>
+        </div>
 
-        <form onSubmit={handleSavePlan} className="bg-surface-container-high p-5 rounded-lg border border-outline-variant/10 space-y-3">
-          <h4 className="font-label text-[10px] font-black uppercase tracking-widest text-tertiary">
-            {planForm.id ? 'Editar plan' : 'Crear plan'}
-          </h4>
-          <input
-            required
-            placeholder="Nombre del plan"
-            value={planForm.name}
-            onChange={e => setPlanForm({ ...planForm, name: e.target.value })}
-            className="w-full bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
-          />
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSavePlan} className="min-w-0 bg-surface-container-high p-4 sm:p-5 rounded-lg border border-outline-variant/10 space-y-4 xl:sticky xl:top-4">
+          <div className="border-b border-outline-variant/10 pb-4">
+            <h4 className="font-label text-[10px] font-black uppercase tracking-widest text-tertiary">
+              {planForm.id ? 'Editar plan' : 'Crear plan'}
+            </h4>
+            <p className="mt-2 font-body text-xs text-tertiary">
+              Selecciona un plan para editarlo o crea uno nuevo desde cero.
+            </p>
+          </div>
+
+          <label className="block">
+            <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Nombre</span>
+            <input
+              required
+              placeholder="Nombre del plan"
+              value={planForm.name}
+              onChange={e => setPlanForm({ ...planForm, name: e.target.value })}
+              className="w-full bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
+            />
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Meses</span>
             <input
               required
               type="number"
@@ -291,8 +334,11 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
               placeholder="Meses"
               value={planForm.months}
               onChange={e => setPlanForm({ ...planForm, months: Number(e.target.value) })}
-              className="bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
+              className="w-full bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
             />
+            </label>
+            <label className="block">
+              <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Precio</span>
             <input
               required
               type="number"
@@ -300,13 +346,14 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
               placeholder="Precio"
               value={planForm.price}
               onChange={e => setPlanForm({ ...planForm, price: Number(e.target.value) })}
-              className="bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
+              className="w-full bg-surface-container-low p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
             />
+            </label>
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-on-primary py-3 rounded font-label text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+            className="w-full bg-primary text-on-primary py-4 rounded font-label text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
           >
             Guardar Plan
           </button>
@@ -357,104 +404,159 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
           </button>
         </div>
         <button
-          onClick={() => setIsRecording(!isRecording)}
+          onClick={() => openPaymentRecorder()}
           className="bg-primary text-on-primary font-label text-sm font-bold uppercase tracking-widest px-8 py-3 rounded-sm shadow-glow hover:scale-105 transition-all"
         >
-          {isRecording ? 'Cancelar' : 'Registrar Pago'}
+          Registrar Pago
         </button>
       </div>
 
       {isRecording && (
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
-          <div className="bg-surface-container-low p-6 md:p-8 rounded-lg ghost-border">
-            <div className="mb-6">
-              <h3 className="font-headline font-bold text-xl uppercase tracking-tight italic">Registrar Nueva Transaccion</h3>
-              {selectedPlan && (
-                <p className="mt-2 font-label text-[10px] uppercase tracking-widest text-tertiary">
-                  {selectedPlan.name}: {selectedPlan.months} mes(es), ${selectedPlan.price.toLocaleString()}
-                </p>
-              )}
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 px-3 py-6 sm:px-6 sm:py-10">
+          <div className="w-full max-w-4xl rounded-xl border border-outline-variant/20 bg-surface-container-low shadow-2xl">
+            <div className="sticky top-0 z-10 flex flex-col gap-4 rounded-t-xl border-b border-outline-variant/10 bg-surface-container-low p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+              <div>
+                <h3 className="font-headline font-bold text-xl uppercase tracking-tight italic">Registrar Nueva Transaccion</h3>
+                {selectedPlan && (
+                  <p className="mt-2 font-label text-[10px] uppercase tracking-widest text-tertiary">
+                    {selectedPlan.name}: {selectedPlan.months} mes(es), ${selectedPlan.price.toLocaleString()}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRecording(false)}
+                className="rounded-sm border border-outline-variant/20 bg-surface-container-highest px-5 py-3 font-label text-[10px] font-black uppercase tracking-widest text-tertiary transition-colors hover:border-primary hover:text-primary"
+              >
+                Cerrar
+              </button>
             </div>
-            <form onSubmit={handleRecordPayment} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <input
-                required
-                type="email"
-                placeholder="Email del Socio"
-                value={formData.userEmail}
-                onChange={e => setFormData({ ...formData, userEmail: e.target.value.toLowerCase() })}
-                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
-              />
-              <input
-                required
-                type="date"
-                value={formData.paymentDate}
-                onChange={e => setFormData({ ...formData, paymentDate: e.target.value })}
-                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
-              />
-              <select
-                value={formData.planId}
-                onChange={e => applySelectedPlan(e.target.value)}
-                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-label text-[10px] uppercase tracking-widest"
-              >
-                {paymentPlans.map(plan => (
-                  <option key={plan.id} value={plan.id}>
-                    {plan.name} - {plan.months}m - ${plan.price.toLocaleString()}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={formData.paymentMethod}
-                onChange={e => setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethod })}
-                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-label text-[10px] uppercase tracking-widest"
-              >
-                {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              <input
-                required
-                type="number"
-                placeholder="Monto ($)"
-                value={formData.amount}
-                onChange={e => setFormData({ ...formData, amount: Number(e.target.value) })}
-                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
-              />
-              <input
-                required
-                type="number"
-                min="1"
-                placeholder="Meses que renueva"
-                value={formData.months}
-                onChange={e => setFormData({ ...formData, months: Number(e.target.value) })}
-                className="bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
-              />
-              <input
-                required
-                placeholder="Concepto"
-                value={formData.concept}
-                onChange={e => setFormData({ ...formData, concept: e.target.value })}
-                className="md:col-span-2 bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
-              />
-              <textarea
-                placeholder="Observaciones"
-                value={formData.notes}
-                onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                className="md:col-span-2 bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm min-h-24 resize-none"
-              />
-              <div className="md:col-span-2 flex justify-end">
+
+            <form onSubmit={handleRecordPayment} className="grid grid-cols-1 gap-5 p-4 sm:p-6 md:grid-cols-2">
+              <label className="md:col-span-2">
+                <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Socio</span>
+                <select
+                  required
+                  value={formData.userEmail}
+                  onChange={e => setFormData({ ...formData, userEmail: e.target.value })}
+                  className="w-full bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
+                >
+                  <option value="">Seleccionar socio...</option>
+                  {paymentUserOptions.map(user => (
+                    <option key={user.id} value={user.email}>
+                      {user.firstName} {user.lastName} - DNI {user.dni || 'sin DNI'} - {user.email}
+                    </option>
+                  ))}
+                </select>
+                {selectedPaymentMember && (
+                  <p className="mt-2 font-label text-[10px] uppercase tracking-widest text-tertiary">
+                    Estado actual: {statusLabel(selectedPaymentMember.financeStatus)} - Vence: {selectedPaymentMember.membershipValidUntil ? selectedPaymentMember.membershipValidUntil.toLocaleDateString() : 'Sin fecha'}
+                  </p>
+                )}
+              </label>
+
+              <label>
+                <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Fecha de pago</span>
+                <input
+                  required
+                  type="date"
+                  value={formData.paymentDate}
+                  onChange={e => setFormData({ ...formData, paymentDate: e.target.value })}
+                  className="w-full bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Plan</span>
+                <select
+                  value={formData.planId}
+                  onChange={e => applySelectedPlan(e.target.value)}
+                  className="w-full bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-label text-[10px] uppercase tracking-widest"
+                >
+                  {paymentPlans.map(plan => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name} - {plan.months}m - ${plan.price.toLocaleString()}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Metodo</span>
+                <select
+                  value={formData.paymentMethod}
+                  onChange={e => setFormData({ ...formData, paymentMethod: e.target.value as PaymentMethod })}
+                  className="w-full bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-label text-[10px] uppercase tracking-widest"
+                >
+                  {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Monto</span>
+                <input
+                  required
+                  type="number"
+                  placeholder="Monto ($)"
+                  value={formData.amount}
+                  onChange={e => setFormData({ ...formData, amount: Number(e.target.value) })}
+                  className="w-full bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Meses que renueva</span>
+                <input
+                  required
+                  type="number"
+                  min="1"
+                  placeholder="Meses que renueva"
+                  value={formData.months}
+                  onChange={e => setFormData({ ...formData, months: Number(e.target.value) })}
+                  className="w-full bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-mono text-sm"
+                />
+              </label>
+
+              <label className="md:col-span-2">
+                <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Concepto</span>
+                <input
+                  required
+                  placeholder="Concepto"
+                  value={formData.concept}
+                  onChange={e => setFormData({ ...formData, concept: e.target.value })}
+                  className="w-full bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
+                />
+              </label>
+
+              <label className="md:col-span-2">
+                <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Observaciones</span>
+                <textarea
+                  placeholder="Observaciones"
+                  value={formData.notes}
+                  onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full bg-surface-container-high p-4 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm min-h-24 resize-none"
+                />
+              </label>
+
+              <div className="md:col-span-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsRecording(false)}
+                  className="rounded-sm border border-outline-variant/20 px-8 py-4 font-label text-[10px] font-black uppercase tracking-[0.2em] text-tertiary transition-colors hover:text-white"
+                >
+                  Cancelar
+                </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-gradient-primary text-on-primary px-12 py-4 rounded-sm font-label text-[10px] font-black uppercase tracking-[0.2em] shadow-glow"
+                  className="bg-gradient-primary text-on-primary px-12 py-4 rounded-sm font-label text-[10px] font-black uppercase tracking-[0.2em] shadow-glow disabled:opacity-50"
                 >
                   {loading ? 'Procesando...' : 'Confirmar Pago'}
                 </button>
               </div>
             </form>
-          </div>
-
-          <div className="hidden xl:block">
-            {plansSettings}
           </div>
         </div>
       )}
@@ -476,9 +578,7 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
             filter={financeFilter}
             onFilterChange={setFinanceFilter}
             onRecordPayment={(email) => {
-              setIsRecording(true);
-              setFormData({ ...formData, userEmail: email });
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              openPaymentRecorder(email);
             }}
           />
         </div>
@@ -488,9 +588,7 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
           members={memberSummaries.filter(member => member.financeStatus === 'moroso')}
           emptyText="No hay socios morosos"
           onRecordPayment={(email) => {
-            setIsRecording(true);
-            setFormData({ ...formData, userEmail: email });
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            openPaymentRecorder(email);
           }}
         />
       )}
@@ -499,9 +597,7 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
           members={memberSummaries.filter(member => member.financeStatus === 'por_vencer')}
           emptyText="No hay vencimientos proximos"
           onRecordPayment={(email) => {
-            setIsRecording(true);
-            setFormData({ ...formData, userEmail: email });
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            openPaymentRecorder(email);
           }}
         />
       )}
@@ -543,7 +639,7 @@ function CashflowPanel({ summary }: { summary: ReturnType<typeof calculateCashfl
           <p className="mt-1 text-sm text-tertiary">Solo cuenta pagos confirmados; los anulados quedan fuera del total y se informan aparte.</p>
         </div>
         <div className="font-label text-[10px] uppercase tracking-widest text-tertiary">
-          {summary.confirmedPaymentsCount} pagos confirmados · {summary.cancelledPaymentsCount} anulados
+          {summary.confirmedPaymentsCount} pagos confirmados - {summary.cancelledPaymentsCount} anulados
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] gap-0">

@@ -68,4 +68,26 @@ describe('AttendanceService', () => {
       status: 'present',
     });
   });
+
+  it('does not fail check-in when public presence cleanup fails', async () => {
+    firebaseMocks.deleteDoc.mockRejectedValue(new Error('Missing permissions on publicPresence'));
+
+    await expect(service.checkIn('socio@test.com', 'user-1', { socialVisibility: 'hidden' })).resolves.toBeUndefined();
+
+    expect(firebaseMocks.updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: expect.arrayContaining(['users', 'user-1']) }),
+      expect.objectContaining({ atGym: true }),
+    );
+  });
+
+  it('marks the user outside even if open attendance lookup fails', async () => {
+    firebaseMocks.getDocs.mockRejectedValue(new Error('Missing index'));
+
+    await expect(service.checkOut('socio@test.com', 'user-1')).resolves.toBeUndefined();
+
+    expect(firebaseMocks.updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: expect.arrayContaining(['users', 'user-1']) }),
+      expect.objectContaining({ atGym: false }),
+    );
+  });
 });

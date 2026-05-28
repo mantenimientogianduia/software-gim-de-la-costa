@@ -5,24 +5,34 @@ import { attendanceService } from '@/services/attendance.service';
 import { userService } from '@/services/user.service';
 import { calculateMemberFinanceSummaries, financeService } from '@/services/finance.service';
 import { defaultAudioService } from '@/services/AudioService';
-import { normalizeAccessIdentifier, shouldIgnoreRepeatedAccess } from '@/services/access.service';
+import {
+  formatAccessError,
+  normalizeAccessIdentifier,
+  shouldIgnoreRepeatedAccess,
+} from '@/services/access.service';
 
 export default function QRScanner() {
   const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'warning' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const lastAccessRef = useRef<{ identifier: string | null; processedAt: number }>({ identifier: null, processedAt: 0 });
+  const lastAccessRef = useRef<{ identifier: string | null; processedAt: number }>({
+    identifier: null,
+    processedAt: 0,
+  });
 
   const handleAccess = async (identifier: string) => {
     const normalizedIdentifier = normalizeAccessIdentifier(identifier);
-    const now = Date.now();
+    const nowMs = Date.now();
     if (!normalizedIdentifier || status === 'processing') return;
-    if (shouldIgnoreRepeatedAccess({
-      identifier: normalizedIdentifier,
-      lastIdentifier: lastAccessRef.current.identifier,
-      nowMs: now,
-      lastProcessedAtMs: lastAccessRef.current.processedAt,
-    })) {
+
+    if (
+      shouldIgnoreRepeatedAccess({
+        identifier: normalizedIdentifier,
+        lastIdentifier: lastAccessRef.current.identifier,
+        nowMs,
+        lastProcessedAtMs: lastAccessRef.current.processedAt,
+      })
+    ) {
       setStatus('warning');
       setMessage('Lectura repetida ignorada. Espera unos segundos para volver a registrar este DNI.');
       setTimeout(() => setStatus('idle'), 1800);
@@ -59,6 +69,7 @@ export default function QRScanner() {
           setMessage(`Ingreso: ${user.firstName} ${user.lastName}`);
         }
       }
+
       lastAccessRef.current = { identifier: normalizedIdentifier, processedAt: Date.now() };
 
       setTimeout(() => {
@@ -72,7 +83,7 @@ export default function QRScanner() {
     } catch (err) {
       console.error(err);
       setStatus('error');
-      setMessage('Error al procesar acceso');
+      setMessage(formatAccessError(err));
       setTimeout(() => setStatus('idle'), 3000);
     }
   };
