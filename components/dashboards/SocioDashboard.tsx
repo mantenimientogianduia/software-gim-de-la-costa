@@ -9,9 +9,10 @@ import { TrainingToolbox } from '@/components/training/TrainingToolbox';
 import StreakDisplay from '@/components/training/StreakDisplay';
 import PersonalInfo from '@/components/profile/PersonalInfo';
 import GymPresence from '@/components/social/GymPresence';
+import SocioPayments from '@/components/socio/SocioPayments';
 
 export default function SocioDashboard({ profile }: { profile: UserProfile & { id: string } }) {
-  const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer' | 'streak' | 'profile' | 'community'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer' | 'streak' | 'profile' | 'community' | 'pagos'>('home');
   const membershipDaysLeft = (() => {
     if (!profile.membershipValidUntil?.toDate) return null;
     return Math.ceil((profile.membershipValidUntil.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -62,12 +63,19 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
           <span className={`material-symbols-outlined ${activeTab === 'community' ? 'icon-fill' : ''}`}>groups</span>
           <span className="font-label text-[10px] uppercase font-bold mt-1">Comunidad</span>
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('timer')}
           className={`flex flex-col items-center justify-center py-1 px-3 rounded transition-all ${activeTab === 'timer' ? 'text-primary-container bg-surface-container-high' : 'text-tertiary hover:text-white'}`}
         >
           <span className={`material-symbols-outlined ${activeTab === 'timer' ? 'icon-fill' : ''}`}>timer</span>
           <span className="font-label text-[10px] uppercase font-bold mt-1">Reloj</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('pagos')}
+          className={`flex flex-col items-center justify-center py-1 px-3 rounded transition-all ${activeTab === 'pagos' ? 'text-primary-container bg-surface-container-high' : 'text-tertiary hover:text-white'}`}
+        >
+          <span className={`material-symbols-outlined ${activeTab === 'pagos' ? 'icon-fill' : ''}`}>payments</span>
+          <span className="font-label text-[10px] uppercase font-bold mt-1">Pagos</span>
         </button>
       </nav>
 
@@ -118,12 +126,19 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
             <span className={`material-symbols-outlined ${activeTab === 'community' ? 'icon-fill' : ''}`}>groups</span>
             <span className="font-label font-bold uppercase text-sm">Comunidad</span>
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('timer')}
             className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'timer' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
           >
             <span className={`material-symbols-outlined ${activeTab === 'timer' ? 'icon-fill' : ''}`}>timer</span>
             <span className="font-label font-bold uppercase text-sm">Cronómetro</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pagos')}
+            className={`flex items-center gap-4 px-6 py-4 transition-all ${activeTab === 'pagos' ? 'bg-surface-container-high text-primary-container border-l-4 border-primary-container' : 'text-tertiary hover:bg-surface-container-high hover:text-white'}`}
+          >
+            <span className={`material-symbols-outlined ${activeTab === 'pagos' ? 'icon-fill' : ''}`}>payments</span>
+            <span className="font-label font-bold uppercase text-sm">Mis Pagos</span>
           </button>
         </nav>
       </aside>
@@ -143,7 +158,7 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
               </header>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-                 <div className={`${(activeTab === 'routine' || activeTab === 'classes' || activeTab === 'timer' || activeTab === 'community') ? 'lg:col-span-12' : 'lg:col-span-8'} flex flex-col gap-6`}>
+                 <div className={`${(activeTab === 'routine' || activeTab === 'classes' || activeTab === 'timer' || activeTab === 'community' || activeTab === 'pagos') ? 'lg:col-span-12' : 'lg:col-span-8'} flex flex-col gap-6`}>
                      {activeTab === 'home' && (
                        <>
                          <div className="md:hidden">
@@ -220,9 +235,13 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                      {activeTab === 'community' && (
                        <GymPresence />
                      )}
+
+                     {activeTab === 'pagos' && (
+                       <SocioPayments userId={profile.email} userName={`${profile.firstName} ${profile.lastName}`} />
+                     )}
                  </div>
                  
-                 {activeTab !== 'routine' && activeTab !== 'classes' && activeTab !== 'timer' && activeTab !== 'community' && (
+                 {activeTab !== 'routine' && activeTab !== 'classes' && activeTab !== 'timer' && activeTab !== 'community' && activeTab !== 'pagos' && (
                    <div className="hidden lg:flex lg:col-span-4 flex-col gap-6">
                       <section className="bg-surface-container-low p-8 rounded-[2rem] ghost-border relative overflow-hidden group">
                          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-700"></div>

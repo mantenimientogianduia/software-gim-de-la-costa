@@ -1,18 +1,20 @@
-import { db } from '@/lib/firebase';
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  serverTimestamp, 
+import { db, storage } from '@/lib/firebase';
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
   updateDoc,
   addDoc,
   Timestamp,
   writeBatch
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { z } from 'zod';
 
 export const PAYMENT_METHODS = ['cash', 'transfer', 'debit', 'credit', 'mercado_pago', 'other'] as const;
@@ -44,11 +46,13 @@ export const PaymentSchema = z.object({
   paymentDate: z.any().optional(),
   renewalBaseDate: z.any().optional(),
   validUntil: z.any(),
-  status: z.enum(['confirmed', 'pending', 'cancelled']).default('confirmed'),
+  status: z.enum(['confirmed', 'pending', 'cancelled', 'rejected']).default('confirmed'),
   notes: z.string().optional(),
   cancelledAt: z.any().optional(),
   cancelledBy: z.string().optional(),
   cancelReason: z.string().optional(),
+  receiptUrl: z.string().optional(),
+  submittedByUser: z.boolean().optional(),
   createdAt: z.any().optional(),
 });
 
@@ -304,6 +308,22 @@ export function buildPaymentsCsv(payments: Payment[]): string {
     .join('\n');
 }
 
+async function compressImage(file: File, maxWidth = 800, quality = 0.75): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')), 'image/jpeg', quality);
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export async function loadFinanceDashboardData(service: Pick<FinanceService, 'getAllPayments' | 'getPaymentPlans' | 'getExpiringMemberships'>) {
   const [paymentsResult, plansResult, expiringResult] = await Promise.allSettled([
     service.getAllPayments(),
@@ -424,12 +444,85 @@ export class FinanceService {
     nextWeek.setDate(now.getDate() + 7);
 
     const q = query(
-      collection(db, 'users'), 
+      collection(db, 'users'),
       where('membershipValidUntil', '<=', Timestamp.fromDate(nextWeek)),
       where('role', '==', 'socio')
     );
     const snap = await getDocs(q);
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+
+  async getPendingPayments(): Promise<Payment[]> {
+    const q = query(this.paymentsRef, where('status', '==', 'pending'), orderBy('createdAt', 'desc'));
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+  }
+
+  async submitPayment(params: {
+    userId: string;
+    userName: string;
+    planId: string;
+    planName: string;
+    months: number;
+    amount: number;
+    receiptFile: File;
+  }): Promise<void> {
+    const compressed = await compressImage(params.receiptFile);
+    const storageRef = ref(storage, `receipts/${params.userId}/${Date.now()}.jpg`);
+    await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
+    const receiptUrl = await getDownloadURL(storageRef);
+
+    await addDoc(this.paymentsRef, {
+      userId: params.userId,
+      userName: params.userName,
+      planId: params.planId,
+      concept: params.planName,
+      monthsPaid: params.months,
+      amount: params.amount,
+      paymentMethod: 'transfer',
+      status: 'pending',
+      submittedByUser: true,
+      receiptUrl,
+      validUntil: null,
+      createdAt: serverTimestamp(),
+    });
+  }
+
+  async approvePayment(paymentId: string): Promise<void> {
+    const paymentRef = doc(this.paymentsRef, paymentId);
+    const paymentSnap = await getDoc(paymentRef);
+    if (!paymentSnap.exists()) throw new Error('Payment not found');
+    const payment = { id: paymentSnap.id, ...paymentSnap.data() } as Payment;
+
+    const userQ = query(collection(db, 'users'), where('email', '==', payment.userId));
+    const userSnap = await getDocs(userQ);
+    if (userSnap.empty) throw new Error('User not found');
+    const userDoc = userSnap.docs[0];
+    const currentExpiration = userDoc.data().membershipValidUntil?.toDate?.() ?? null;
+    const paymentDate = new Date();
+    const validUntil = calculateMembershipRenewalDate({
+      currentExpiration,
+      paymentDate,
+      monthsPaid: payment.monthsPaid || 1,
+    });
+
+    const batch = writeBatch(db);
+    batch.update(paymentRef, {
+      status: 'confirmed',
+      paymentDate: serverTimestamp(),
+      validUntil: Timestamp.fromDate(validUntil),
+    });
+    batch.update(userDoc.ref, {
+      membershipValidUntil: Timestamp.fromDate(validUntil),
+      lastPaymentDate: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    await batch.commit();
+  }
+
+  async rejectPayment(paymentId: string): Promise<void> {
+    const paymentRef = doc(this.paymentsRef, paymentId);
+    await updateDoc(paymentRef, { status: 'rejected' });
   }
 }
 

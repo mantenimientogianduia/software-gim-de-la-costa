@@ -28,11 +28,12 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 
 const defaultPlans: PaymentPlan[] = DEFAULT_PAYMENT_PLANS.map(plan => ({ ...plan, active: true }));
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
-type FinanceTab = 'overview' | 'history' | 'expiring' | 'delinquent' | 'communications' | 'settings';
+type FinanceTab = 'overview' | 'history' | 'expiring' | 'delinquent' | 'communications' | 'settings' | 'pending';
 type FinanceFilter = 'all' | 'moroso' | 'por_vencer' | 'activo' | 'sin_pagos';
 
 export default function FinanceManager({ initialTab = 'history' }: { initialTab?: 'history' | 'expiring' }) {
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>(defaultPlans);
   const [users, setUsers] = useState<(UserProfile & { id: string })[]>([]);
   const [loading, setLoading] = useState(false);
@@ -105,13 +106,15 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [data, allUsers] = await Promise.all([
+      const [data, allUsers, pending] = await Promise.all([
         loadFinanceDashboardData(financeService),
         userService.getAllUsers() as Promise<(UserProfile & { id: string })[]>,
+        financeService.getPendingPayments(),
       ]);
       setPayments(data.payments);
       setPaymentPlans(data.paymentPlans);
       setUsers(allUsers);
+      setPendingPayments(pending);
       Object.values(data.errors).forEach(error => {
         if (error) console.error(error);
       });
@@ -234,6 +237,33 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     } catch (err) {
       console.error(err);
       alert('Error al anular el pago');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprovePayment = async (paymentId: string) => {
+    setLoading(true);
+    try {
+      await financeService.approvePayment(paymentId);
+      await fetchData();
+      alert('Pago aprobado y membresia extendida.');
+    } catch (err) {
+      console.error(err);
+      alert('Error al aprobar el pago');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRejectPayment = async (paymentId: string) => {
+    setLoading(true);
+    try {
+      await financeService.rejectPayment(paymentId);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Error al rechazar el pago');
     } finally {
       setLoading(false);
     }
@@ -395,6 +425,17 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
             className={`px-6 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${activeTab === 'communications' ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
           >
             Comunicaciones
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`relative px-6 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${activeTab === 'pending' ? 'bg-yellow-500 text-black font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
+          >
+            Comprobantes
+            {pendingPayments.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-yellow-400 text-black font-mono text-[9px] font-black px-1">
+                {pendingPayments.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -606,6 +647,14 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
       )}
       {activeTab === 'history' && (
         <PaymentsHistory payments={payments} onCancelPayment={handleCancelPayment} onExportPayments={handleExportPayments} />
+      )}
+      {activeTab === 'pending' && (
+        <PendingPayments
+          payments={pendingPayments}
+          loading={loading}
+          onApprove={handleApprovePayment}
+          onReject={handleRejectPayment}
+        />
       )}
     </div>
   );
@@ -908,6 +957,86 @@ function PaymentsHistory({
         </div>
       )}
       </div>
+    </div>
+  );
+}
+
+function PendingPayments({
+  payments,
+  loading,
+  onApprove,
+  onReject,
+}: {
+  payments: Payment[];
+  loading: boolean;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+}) {
+  return (
+    <div className="bg-surface-container-low rounded-lg ghost-border overflow-hidden">
+      <div className="p-6 border-b border-outline-variant/10">
+        <h3 className="font-headline text-xl font-black uppercase tracking-tight italic">Comprobantes Pendientes</h3>
+        <p className="mt-1 text-sm text-tertiary">Revisar, aprobar o rechazar comprobantes enviados por socios.</p>
+      </div>
+
+      {payments.length === 0 ? (
+        <div className="py-24 text-center opacity-30">
+          <span className="material-symbols-outlined text-4xl mb-4">task_alt</span>
+          <p className="font-label uppercase tracking-widest text-xs">Sin comprobantes para revisar</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-outline-variant/10">
+          {payments.map(payment => {
+            const sentAt = payment.createdAt?.toDate?.();
+            return (
+              <div key={payment.id} className="p-5 flex flex-col lg:flex-row lg:items-center gap-5">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <p className="font-body font-bold uppercase text-sm">{payment.userName}</p>
+                  <p className="font-label text-[10px] text-tertiary lowercase">{payment.userId}</p>
+                  <p className="font-label text-[10px] uppercase tracking-widest text-primary">
+                    {payment.concept} — {payment.monthsPaid}m — ${payment.amount.toLocaleString()}
+                  </p>
+                  {sentAt && (
+                    <p className="font-mono text-[10px] text-tertiary">Enviado: {sentAt.toLocaleDateString()} {sentAt.toLocaleTimeString()}</p>
+                  )}
+                </div>
+
+                {payment.receiptUrl && (
+                  <a
+                    href={payment.receiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0"
+                  >
+                    <img
+                      src={payment.receiptUrl}
+                      alt="Comprobante"
+                      className="w-24 h-24 object-cover rounded border border-outline-variant/20 hover:opacity-80 transition-opacity"
+                    />
+                  </a>
+                )}
+
+                <div className="flex gap-3 shrink-0">
+                  <button
+                    disabled={loading}
+                    onClick={() => payment.id && onApprove(payment.id)}
+                    className="px-5 py-3 rounded bg-green-600 hover:bg-green-500 text-white font-label text-[9px] uppercase tracking-widest font-black transition-all disabled:opacity-50"
+                  >
+                    Aprobar
+                  </button>
+                  <button
+                    disabled={loading}
+                    onClick={() => payment.id && onReject(payment.id)}
+                    className="px-5 py-3 rounded bg-error/10 text-error hover:bg-error hover:text-white font-label text-[9px] uppercase tracking-widest font-black transition-all disabled:opacity-50"
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
