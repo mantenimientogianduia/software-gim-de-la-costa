@@ -1,4 +1,4 @@
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import {
   collection,
   doc,
@@ -14,7 +14,6 @@ import {
   Timestamp,
   writeBatch
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { z } from 'zod';
 
 export const PAYMENT_METHODS = ['cash', 'transfer', 'debit', 'credit', 'mercado_pago', 'other'] as const;
@@ -51,7 +50,7 @@ export const PaymentSchema = z.object({
   cancelledAt: z.any().optional(),
   cancelledBy: z.string().optional(),
   cancelReason: z.string().optional(),
-  receiptUrl: z.string().optional(),
+  receiptBase64: z.string().optional(),
   submittedByUser: z.boolean().optional(),
   createdAt: z.any().optional(),
 });
@@ -308,6 +307,15 @@ export function buildPaymentsCsv(payments: Payment[]): string {
     .join('\n');
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function compressImage(file: File, maxWidth = 800, quality = 0.75): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -468,9 +476,7 @@ export class FinanceService {
     receiptFile: File;
   }): Promise<void> {
     const compressed = await compressImage(params.receiptFile);
-    const storageRef = ref(storage, `receipts/${params.userId}/${Date.now()}.jpg`);
-    await uploadBytes(storageRef, compressed, { contentType: 'image/jpeg' });
-    const receiptUrl = await getDownloadURL(storageRef);
+    const receiptBase64 = await blobToBase64(compressed);
 
     await addDoc(this.paymentsRef, {
       userId: params.userId,
@@ -482,7 +488,7 @@ export class FinanceService {
       paymentMethod: 'transfer',
       status: 'pending',
       submittedByUser: true,
-      receiptUrl,
+      receiptBase64,
       validUntil: null,
       createdAt: serverTimestamp(),
     });

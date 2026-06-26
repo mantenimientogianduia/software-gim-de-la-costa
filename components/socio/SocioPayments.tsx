@@ -199,9 +199,9 @@ export default function SocioPayments({ userId, userName }: { userId: string; us
                       )}
                     </div>
                   </div>
-                  {payment.receiptUrl && (
+                  {payment.receiptBase64 && (
                     <a
-                      href={payment.receiptUrl}
+                      href={payment.receiptBase64}
                       target="_blank"
                       rel="noreferrer"
                       className="shrink-0 px-4 py-2 rounded bg-surface-container-high hover:bg-surface-container-highest font-label text-[9px] uppercase tracking-widest transition-colors"

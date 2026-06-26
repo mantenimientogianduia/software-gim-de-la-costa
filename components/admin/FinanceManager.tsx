@@ -931,8 +931,8 @@ function PaymentsHistory({
               </td>
               <td className="p-6 font-label text-[10px] uppercase tracking-widest text-primary font-bold">{payment.concept} ({payment.monthsPaid}m)</td>
               <td className="p-6">
-                <span className={`px-3 py-1 rounded-full border font-label text-[8px] uppercase tracking-widest ${payment.status === 'cancelled' ? 'bg-error/10 text-error border-error/30' : 'bg-green-500/10 text-green-400 border-green-500/30'}`}>
-                  {payment.status === 'cancelled' ? 'Anulado' : 'Confirmado'}
+                <span className={`px-3 py-1 rounded-full border font-label text-[8px] uppercase tracking-widest ${payment.status === 'cancelled' ? 'bg-error/10 text-error border-error/30' : payment.status === 'rejected' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' : payment.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' : 'bg-green-500/10 text-green-400 border-green-500/30'}`}>
+                  {payment.status === 'cancelled' ? 'Anulado' : payment.status === 'rejected' ? 'Rechazado' : payment.status === 'pending' ? 'Pendiente' : 'Confirmado'}
                 </span>
                 {payment.cancelReason && <p className="mt-1 text-[10px] text-tertiary">{payment.cancelReason}</p>}
               </td>
@@ -1001,15 +1001,15 @@ function PendingPayments({
                   )}
                 </div>
 
-                {payment.receiptUrl && (
+                {payment.receiptBase64 && (
                   <a
-                    href={payment.receiptUrl}
+                    href={payment.receiptBase64}
                     target="_blank"
                     rel="noreferrer"
                     className="shrink-0"
                   >
                     <img
-                      src={payment.receiptUrl}
+                      src={payment.receiptBase64}
                       alt="Comprobante"
                       className="w-24 h-24 object-cover rounded border border-outline-variant/20 hover:opacity-80 transition-opacity"
                     />
