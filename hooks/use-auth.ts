@@ -3,12 +3,29 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { userService, UserProfile } from '@/services/user.service';
 
+export const DEV_SESSION_KEY = '__gymDevSession__';
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === 'true') {
+      try {
+        const raw = sessionStorage.getItem(DEV_SESSION_KEY);
+        if (raw) {
+          const session = JSON.parse(raw);
+          setUser({ uid: 'dev-uid', email: session.email } as unknown as User);
+          setProfile(session.profile as UserProfile);
+          setIsDevMode(true);
+          setLoading(false);
+          return;
+        }
+      } catch {}
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -27,5 +44,5 @@ export function useAuth() {
     return () => unsubscribe();
   }, []);
 
-  return { user, profile, loading };
+  return { user, profile, loading, isDevMode };
 }

@@ -13,7 +13,7 @@ import { canUseDevTools } from '@/lib/app-config';
 type UserRole = 'admin' | 'profesor' | 'socio';
 
 export default function DashboardPage() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, isDevMode } = useAuth();
   const [overrideRole, setOverrideRole] = useState<UserRole | null>(null);
   const router = useRouter();
 
@@ -39,7 +39,7 @@ export default function DashboardPage() {
   }
 
   const activeRole = overrideRole || (profile.role as UserRole);
-  const isDev = canUseDevTools(user.email);
+  const isDev = isDevMode || canUseDevTools(user?.email);
 
   const renderDashboard = () => {
     if (!profile || !user) return null;
@@ -58,9 +58,10 @@ export default function DashboardPage() {
   return (
     <>
       {isDev && (
-        <RoleSwitcher 
-          currentRole={activeRole} 
-          onRoleChange={setOverrideRole} 
+        <RoleSwitcher
+          currentRole={activeRole}
+          onRoleChange={setOverrideRole}
+          isDevSession={isDevMode}
         />
       )}
       {renderDashboard()}

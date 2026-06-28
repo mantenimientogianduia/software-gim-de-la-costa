@@ -123,6 +123,14 @@ export default function LoginPage() {
                 <div className="text-center font-label text-[10px] text-tertiary uppercase tracking-[0.2em] opacity-50">
                   Sistema de autenticación segura vía Google OAuth
                 </div>
+                {process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === 'true' && (
+                  <a
+                    href="/dev-login"
+                    className="block text-center font-label text-[9px] uppercase tracking-widest text-yellow-500/50 hover:text-yellow-400 transition-colors"
+                  >
+                    ⚡ Dev Login (modo prueba)
+                  </a>
+                )}
               </div>
             )}
 
