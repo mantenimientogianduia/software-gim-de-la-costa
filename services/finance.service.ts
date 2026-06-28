@@ -7,7 +7,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   serverTimestamp,
   updateDoc,
   addDoc,
@@ -461,9 +460,15 @@ export class FinanceService {
   }
 
   async getPendingPayments(): Promise<Payment[]> {
-    const q = query(this.paymentsRef, where('status', '==', 'pending'), orderBy('createdAt', 'desc'));
+    const q = query(this.paymentsRef, where('status', '==', 'pending'));
     const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Payment));
+    return snap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() } as Payment))
+      .sort((a, b) => {
+        const aMs = toDate(a.createdAt)?.getTime() ?? 0;
+        const bMs = toDate(b.createdAt)?.getTime() ?? 0;
+        return bMs - aMs;
+      });
   }
 
   async submitPayment(params: {
@@ -505,7 +510,7 @@ export class FinanceService {
     if (userSnap.empty) throw new Error('User not found');
     const userDoc = userSnap.docs[0];
     const currentExpiration = userDoc.data().membershipValidUntil?.toDate?.() ?? null;
-    const paymentDate = new Date();
+    const paymentDate = toDate(payment.createdAt) ?? new Date();
     const validUntil = calculateMembershipRenewalDate({
       currentExpiration,
       paymentDate,

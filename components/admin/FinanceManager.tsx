@@ -39,6 +39,9 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [activeTab, setActiveTab] = useState<FinanceTab>(initialTab === 'history' ? 'overview' : initialTab);
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+  const [cancelModal, setCancelModal] = useState<{ payment: Payment } | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
   const [financeFilter, setFinanceFilter] = useState<FinanceFilter>('all');
   const [planForm, setPlanForm] = useState({ id: '', name: '', months: 1, price: 0 });
   const [formData, setFormData] = useState({
@@ -106,15 +109,13 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [data, allUsers, pending] = await Promise.all([
+      const [data, allUsers] = await Promise.all([
         loadFinanceDashboardData(financeService),
         userService.getAllUsers() as Promise<(UserProfile & { id: string })[]>,
-        financeService.getPendingPayments(),
       ]);
       setPayments(data.payments);
       setPaymentPlans(data.paymentPlans);
       setUsers(allUsers);
-      setPendingPayments(pending);
       Object.values(data.errors).forEach(error => {
         if (error) console.error(error);
       });
@@ -122,6 +123,12 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
       console.error(err);
     } finally {
       setLoading(false);
+    }
+    try {
+      const pending = await financeService.getPendingPayments();
+      setPendingPayments(pending);
+    } catch (err) {
+      console.error('getPendingPayments failed:', err);
     }
   };
 
@@ -132,6 +139,14 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
   useEffect(() => {
     setActiveTab(initialTab === 'history' ? 'overview' : initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => setToast({ msg, type });
 
   const applySelectedPlan = (planId: string) => {
     const plan = paymentPlans.find(item => item.id === planId);
@@ -159,10 +174,10 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
       });
       setPlanForm({ id: '', name: '', months: 1, price: 0 });
       await fetchData();
-      alert('Plan guardado.');
+      showToast('Plan guardado correctamente.');
     } catch (err) {
       console.error(err);
-      alert('Error al guardar el plan');
+      showToast('Error al guardar el plan', 'err');
     } finally {
       setLoading(false);
     }
@@ -215,28 +230,33 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
         notes: '',
       });
       await fetchData();
-      alert('Pago registrado y membresia extendida.');
+      showToast('Pago registrado y membresía extendida.');
     } catch (err) {
       console.error(err);
-      alert('Error al registrar pago');
+      showToast('Error al registrar pago', 'err');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancelPayment = async (payment: Payment) => {
-    if (!payment.id || payment.status === 'cancelled') return;
-    const reason = window.prompt(`Motivo para anular el pago de ${payment.userName}`);
-    if (!reason?.trim()) return;
+  const handleCancelPayment = (payment: Payment) => {
+    if (!payment.id || payment.status !== 'confirmed') return;
+    setCancelReason('');
+    setCancelModal({ payment });
+  };
 
+  const confirmCancelPayment = async () => {
+    if (!cancelModal?.payment.id || !cancelReason.trim()) return;
+    const { payment } = cancelModal;
+    setCancelModal(null);
     setLoading(true);
     try {
-      await financeService.cancelPayment(payment.id, payment.userId, reason.trim(), 'admin');
+      await financeService.cancelPayment(payment.id!, payment.userId, cancelReason.trim(), 'admin');
       await fetchData();
-      alert('Pago anulado y vencimiento recalculado.');
+      showToast('Pago anulado y vencimiento recalculado.');
     } catch (err) {
       console.error(err);
-      alert('Error al anular el pago');
+      showToast('Error al anular el pago', 'err');
     } finally {
       setLoading(false);
     }
@@ -247,10 +267,10 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     try {
       await financeService.approvePayment(paymentId);
       await fetchData();
-      alert('Pago aprobado y membresia extendida.');
+      showToast('Pago aprobado y membresía extendida.');
     } catch (err) {
       console.error(err);
-      alert('Error al aprobar el pago');
+      showToast('Error al aprobar el pago', 'err');
     } finally {
       setLoading(false);
     }
@@ -261,9 +281,10 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     try {
       await financeService.rejectPayment(paymentId);
       await fetchData();
+      showToast('Comprobante rechazado.');
     } catch (err) {
       console.error(err);
-      alert('Error al rechazar el pago');
+      showToast('Error al rechazar el pago', 'err');
     } finally {
       setLoading(false);
     }
@@ -394,6 +415,52 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[300] flex items-center gap-3 px-5 py-4 rounded-lg shadow-2xl font-label text-[10px] font-black uppercase tracking-widest transition-all ${toast.type === 'ok' ? 'bg-green-600 text-white' : 'bg-error text-white'}`}>
+          <span className="material-symbols-outlined text-[18px]">{toast.type === 'ok' ? 'check_circle' : 'error'}</span>
+          {toast.msg}
+        </div>
+      )}
+
+      {cancelModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md bg-surface-container-low rounded-xl border border-outline-variant/20 p-6 space-y-5 shadow-2xl">
+            <h3 className="font-headline font-bold text-xl uppercase tracking-tight italic">Anular pago</h3>
+            <p className="text-sm text-tertiary">
+              Anular pago de <strong className="text-on-surface">{cancelModal.payment.userName}</strong> por{' '}
+              <strong className="text-on-surface">${cancelModal.payment.amount.toLocaleString()}</strong>. El vencimiento se recalculará automáticamente.
+            </p>
+            <label className="block">
+              <span className="mb-2 block font-label text-[9px] font-black uppercase tracking-widest text-tertiary">Motivo (requerido)</span>
+              <input
+                autoFocus
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && cancelReason.trim() && confirmCancelPayment()}
+                placeholder="Ej: Error de registro, devolución..."
+                className="w-full bg-surface-container-high p-3 rounded outline-none border-b-2 border-transparent focus:border-primary font-body text-sm"
+              />
+            </label>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setCancelModal(null)}
+                className="px-6 py-3 rounded border border-outline-variant/20 font-label text-[10px] uppercase tracking-widest text-tertiary hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!cancelReason.trim()}
+                onClick={confirmCancelPayment}
+                className="px-6 py-3 rounded bg-error text-white font-label text-[10px] font-black uppercase tracking-widest disabled:opacity-40 transition-all"
+              >
+                Confirmar anulación
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="flex flex-wrap bg-surface-container-high p-1 rounded-sm gap-1">
           <button
@@ -441,7 +508,7 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
             onClick={() => setActiveTab('settings')}
             className={`px-6 py-2 font-label text-[10px] uppercase tracking-widest rounded-sm transition-all ${activeTab === 'settings' ? 'bg-primary text-on-primary font-bold shadow-md' : 'text-tertiary hover:text-white'}`}
           >
-            Configuracion de Cuotas y Planes
+            Cuotas y Planes
           </button>
         </div>
         <button
@@ -923,7 +990,7 @@ function PaymentsHistory({
         </thead>
         <tbody className="divide-y divide-outline-variant/10">
           {payments.map(payment => (
-            <tr key={payment.id} className={`hover:bg-surface-container-high/50 transition-colors ${payment.status === 'cancelled' ? 'opacity-60' : ''}`}>
+            <tr key={payment.id} className={`hover:bg-surface-container-high/50 transition-colors ${payment.status === 'cancelled' || payment.status === 'rejected' ? 'opacity-60' : ''}`}>
               <td className="p-6 font-mono text-[11px] text-tertiary">{payment.paymentDate?.toDate ? payment.paymentDate.toDate().toLocaleDateString() : 'Pendiente'}</td>
               <td className="p-6 font-body font-bold text-sm uppercase tracking-tight">
                 {payment.userName}
@@ -931,8 +998,13 @@ function PaymentsHistory({
               </td>
               <td className="p-6 font-label text-[10px] uppercase tracking-widest text-primary font-bold">{payment.concept} ({payment.monthsPaid}m)</td>
               <td className="p-6">
-                <span className={`px-3 py-1 rounded-full border font-label text-[8px] uppercase tracking-widest ${payment.status === 'cancelled' ? 'bg-error/10 text-error border-error/30' : payment.status === 'rejected' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' : payment.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' : 'bg-green-500/10 text-green-400 border-green-500/30'}`}>
-                  {payment.status === 'cancelled' ? 'Anulado' : payment.status === 'rejected' ? 'Rechazado' : payment.status === 'pending' ? 'Pendiente' : 'Confirmado'}
+                <span className={`px-3 py-1 rounded-full border font-label text-[8px] uppercase tracking-widest ${
+                  payment.status === 'confirmed'  ? 'bg-green-500/10 text-green-400 border-green-500/30' :
+                  payment.status === 'pending'    ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' :
+                  payment.status === 'rejected'   ? 'bg-error/10 text-error border-error/30' :
+                                                    'bg-surface-container-highest text-tertiary border-outline-variant/20'
+                }`}>
+                  {payment.status === 'confirmed' ? 'Confirmado' : payment.status === 'pending' ? 'Pendiente' : payment.status === 'rejected' ? 'Rechazado' : 'Anulado'}
                 </span>
                 {payment.cancelReason && <p className="mt-1 text-[10px] text-tertiary">{payment.cancelReason}</p>}
               </td>
@@ -940,7 +1012,7 @@ function PaymentsHistory({
               <td className="p-6 font-mono text-sm font-bold text-on-surface">${payment.amount.toLocaleString()}</td>
               <td className="p-6"><span className="font-mono text-[11px] bg-surface-container-highest px-3 py-1 rounded">{payment.validUntil?.toDate ? payment.validUntil.toDate().toLocaleDateString() : '-'}</span></td>
               <td className="p-6 text-right">
-                {payment.status !== 'cancelled' && (
+                {payment.status === 'confirmed' && (
                   <button onClick={() => onCancelPayment(payment)} className="px-4 py-2 rounded bg-error/10 text-error hover:bg-error hover:text-white font-label text-[9px] uppercase tracking-widest font-black transition-all">
                     Anular
                   </button>
