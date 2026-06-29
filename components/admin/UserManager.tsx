@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { userService, UserProfile } from '@/services/user.service';
 import { calculateMemberFinanceSummaries, financeService, Payment } from '@/services/finance.service';
 
@@ -10,6 +11,7 @@ export default function UserManager() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'active'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
   const [newUserData, setNewUserData] = useState({
     firstName: '',
     lastName: '',
@@ -17,6 +19,11 @@ export default function UserManager() {
     dni: '',
     role: 'socio' as const
   });
+
+  const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -54,10 +61,10 @@ export default function UserManager() {
       setIsCreating(false);
       setNewUserData({ firstName: '', lastName: '', email: '', dni: '', role: 'socio' });
       await fetchUsers();
-      alert('Socio creado correctamente. Puede iniciar sesión con Google usando el email ingresado.');
+      showToast('Socio creado. Puede iniciar sesión con Google usando el email ingresado.', 'ok');
     } catch (err) {
       console.error(err);
-      alert('Error al crear usuario');
+      showToast('Error al crear usuario. Verificá los datos e intentá de nuevo.', 'err');
     } finally {
       setLoading(false);
     }
@@ -67,8 +74,9 @@ export default function UserManager() {
     try {
       await userService.updateUserStatus(userId, newStatus);
       await fetchUsers();
-    } catch (err) {
-      alert('Error al actualizar estado');
+      showToast('Estado actualizado.', 'ok');
+    } catch {
+      showToast('Error al actualizar estado.', 'err');
     }
   };
 
@@ -76,26 +84,27 @@ export default function UserManager() {
     try {
       await userService.updateUserRole(userId, newRole);
       await fetchUsers();
-    } catch (err) {
-      alert('Error al actualizar rol');
+      showToast('Rol actualizado.', 'ok');
+    } catch {
+      showToast('Error al actualizar rol.', 'err');
     }
   };
 
   const handleDniChange = async (userId: string, dni: string) => {
     try {
       await userService.updateUserDni(userId, dni);
-      await fetchUsers();
-    } catch (err) {
-      alert('Error al actualizar DNI');
+      showToast('DNI actualizado.', 'ok');
+    } catch {
+      showToast('Error al actualizar DNI.', 'err');
     }
   };
 
   const handlePhoneChange = async (userId: string, phone: string) => {
     try {
       await userService.updateUserPhone(userId, phone);
-      await fetchUsers();
-    } catch (err) {
-      alert('Error al actualizar telefono');
+      showToast('Teléfono actualizado.', 'ok');
+    } catch {
+      showToast('Error al actualizar teléfono.', 'err');
     }
   };
 
@@ -123,6 +132,27 @@ export default function UserManager() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            className={`fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-label text-sm font-bold uppercase tracking-widest ${
+              toast.type === 'ok'
+                ? 'bg-green-500/20 border border-green-500/40 text-green-300'
+                : 'bg-error/20 border border-error/40 text-error'
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">
+              {toast.type === 'ok' ? 'check_circle' : 'error'}
+            </span>
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Stats Bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <div className="bg-surface-container-high/30 p-4 rounded-xl border border-outline-variant/10 flex items-center justify-between">
@@ -248,14 +278,23 @@ export default function UserManager() {
                   <tr className="bg-surface-container-highest/20 border-b border-outline-variant/10">
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Identidad</th>
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">DNI Acceso</th>
-                     <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Telefono</th>
+                     <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Teléfono</th>
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Rol</th>
+                     <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Membresía</th>
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Estado</th>
-                     <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary">Cuota</th>
                      <th className="p-8 font-label text-[10px] uppercase tracking-[0.2em] text-tertiary text-right">Acciones</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-outline-variant/5">
+                  {loading && users.length === 0 && Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={`skel-${i}`}>
+                      {Array.from({ length: 7 }).map((__, j) => (
+                        <td key={j} className="p-8">
+                          <div className="h-4 rounded bg-surface-container-high animate-pulse" style={{ width: j === 0 ? '120px' : j === 6 ? '80px' : '80px' }} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
                   {filteredUsers.map((user) => (
                      <tr key={user.id} className="hover:bg-surface-container-high/30 transition-colors group">
                         <td className="p-8 font-body font-bold uppercase tracking-tight text-sm">

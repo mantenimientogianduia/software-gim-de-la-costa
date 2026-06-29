@@ -169,31 +169,35 @@ export default function StreakDisplay({ userId, weeklyTrainingGoal = 3 }: { user
           Entrenamientos Recientes
         </h3>
         <div className="space-y-3">
-          {streakData.history.filter(d => d.hasWorkout).slice(0, 5).map((day, idx) => (
-            <motion.div 
-              key={idx} 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-high transition-all cursor-pointer group shadow-sm hover:shadow-md"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary transition-all group-hover:text-white">
-                  <span className="material-symbols-outlined icon-fill">fitness_center</span>
+          {streakData.history.filter(d => d.hasWorkout).slice(0, 7).map((day, idx) => {
+            const isToday = day.date.toDateString() === todayStr;
+            return (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl border border-outline-variant/10 shadow-sm"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isToday ? 'bg-primary text-white shadow-glow' : 'bg-primary/10 text-primary'}`}>
+                    <span className="material-symbols-outlined icon-fill">fitness_center</span>
+                  </div>
+                  <div>
+                    <p className="font-headline font-bold text-sm uppercase tracking-tight">
+                      {isToday ? 'Hoy' : 'Sesión Completada'}
+                    </p>
+                    <p className="font-body text-xs text-tertiary capitalize">
+                      {day.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-headline font-bold text-sm uppercase tracking-tight group-hover:text-primary transition-colors">Sesión Completada</p>
-                  <p className="font-body text-xs text-tertiary capitalize">
-                    {day.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-tertiary">
-                <span className="font-label text-[10px] font-bold uppercase tracking-widest hidden sm:block">Ver detalles</span>
-                <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-              </div>
-            </motion.div>
-          ))}
+                <span className={`font-label text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${isToday ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+                  {isToday ? 'Hoy' : '✓'}
+                </span>
+              </motion.div>
+            );
+          })}
           {streakData.history.filter(d => d.hasWorkout).length === 0 && (
             <div className="py-12 text-center bg-surface-container-lowest rounded-2xl border-2 border-dashed border-outline-variant/20">
                <span className="material-symbols-outlined text-4xl text-tertiary/20 mb-3">fitness_center</span>
