@@ -110,7 +110,7 @@ export default function QRScanner() {
                status === 'error' ? 'bg-red-500 text-white' :
                status === 'processing' ? 'bg-primary text-on-primary animate-pulse' : 'bg-surface-container-highest text-tertiary'
             }`}>
-               {status === 'idle' ? 'Listo' : status}
+              {{ idle: 'Listo', processing: 'Procesando...', success: 'OK', warning: 'Atención', error: 'Error' }[status]}
             </div>
          </div>
 

@@ -140,13 +140,11 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
     if (!plan.id) return;
     setIsSaving(true);
     try {
-      console.log('Cargando plantilla:', plan.id);
       setTitle(plan.title);
       setDescription(plan.description || '');
       setLevel(plan.level);
-      
+
       const planWeeks = await routineService.getPlanWeeks(plan.id);
-      console.log('Semanas encontradas:', planWeeks.length);
 
       if (planWeeks.length > 0) {
         const mappedWeeks: WeekState[] = planWeeks.map(w => ({

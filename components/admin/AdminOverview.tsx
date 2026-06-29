@@ -90,7 +90,7 @@ export default function AdminOverview({ onManageExpired }: { onManageExpired?: (
             </h3>
           </div>
           <p className="mt-4 font-body text-xs text-on-primary/70 italic">
-            {loading ? 'Cargando registros...' : `${stats.newUsersLast24h} registros en las ultimas 24hs`}
+            {loading ? 'Cargando registros...' : `${stats.newUsersLast24h} registros en las últimas 24hs`}
           </p>
           <div className="absolute bottom-0 right-0 p-4 opacity-20 text-on-primary">
             <span className="material-symbols-outlined text-5xl md:text-6xl">person_add</span>
@@ -101,7 +101,7 @@ export default function AdminOverview({ onManageExpired }: { onManageExpired?: (
           whileHover={{ y: -5 }}
           className="bg-surface-container-low rounded-2xl md:rounded-3xl p-6 md:p-8 ghost-border border-l-4 border-l-error relative overflow-hidden group shadow-xl"
         >
-          <p className="font-label text-xs uppercase tracking-[0.2em] text-error mb-4">Membresias Vencidas</p>
+          <p className="font-label text-xs uppercase tracking-[0.2em] text-error mb-4">Membresías Vencidas</p>
           <div className="flex items-baseline gap-2">
             <h3 className="font-headline text-5xl md:text-6xl font-black tracking-tighter text-error">
               {loading ? '--' : stats.expiredMemberships}
@@ -122,7 +122,7 @@ export default function AdminOverview({ onManageExpired }: { onManageExpired?: (
             <div>
               <h3 className="font-headline text-2xl font-black uppercase tracking-tight italic">Actividad Semanal</h3>
               <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">
-                Ingresos registrados por dia
+                Ingresos registrados por día
               </p>
             </div>
             <div className="flex bg-surface-container-lowest p-1 rounded-lg self-start">

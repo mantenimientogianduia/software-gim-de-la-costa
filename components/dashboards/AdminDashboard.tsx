@@ -93,7 +93,7 @@ export default function AdminDashboard({ profile }: { profile: UserProfile }) {
             <div className="min-w-0">
               <h1 className="font-headline text-xl md:text-2xl font-black uppercase tracking-tighter truncate">
                 {activeTab === 'overview' ? 'Panel de Control'
-                  : activeTab === 'users' ? 'Gestion de Socios'
+                  : activeTab === 'users' ? 'Gestión de Socios'
                   : activeTab === 'access' ? 'Scanner de Entrada'
                   : activeTab === 'classes' ? 'Agenda de Clases'
                   : activeTab === 'routines' ? 'Editor de Rutinas'
