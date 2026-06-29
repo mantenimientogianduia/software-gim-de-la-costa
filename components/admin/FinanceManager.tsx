@@ -189,7 +189,7 @@ export default function FinanceManager({ initialTab = 'history' }: { initialTab?
     try {
       const userProfile = await userService.getUserByEmail(formData.userEmail);
       if (!userProfile) {
-        alert('Usuario no encontrado');
+        showToast('Usuario no encontrado. Verificá el email ingresado.', 'err');
         setLoading(false);
         return;
       }

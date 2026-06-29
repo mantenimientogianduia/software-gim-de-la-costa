@@ -30,6 +30,12 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'build' | 'manage'>('build');
   const [myPlans, setMyPlans] = useState<TrainingPlan[]>([]);
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+
+  const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
   
   // Hierarchical State
   const [weeks, setWeeks] = useState<WeekState[]>([
@@ -163,7 +169,7 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
       setActiveDayIdx(0);
     } catch (err) {
       console.error('Error al cargar plantilla:', err);
-      alert('Error al cargar la plantilla: ' + (err instanceof Error ? err.message : 'Desconocido'));
+      showToast('Error al cargar la plantilla: ' + (err instanceof Error ? err.message : 'Error desconocido'), 'err');
     } finally {
       setIsSaving(false);
     }
@@ -173,19 +179,19 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
     setIsSaving(true);
     try {
       await routineService.assignPlanToUser(templateId, userEmail, instructorId);
-      alert('Plan asignado con éxito a ' + userEmail);
+      showToast('Plan asignado con éxito a ' + userEmail, 'ok');
       setAssigningPlanId(null);
     } catch (err) {
       console.error(err);
-      alert('Error al asignar el plan.');
+      showToast('Error al asignar el plan. Intentá de nuevo.', 'err');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSave = async (asTemplate: boolean = true) => {
-    if (!title) return alert('Título requerido');
-    if (!asTemplate && !selectedUser) return alert('Selecciona un socio');
+    if (!title) { showToast('El título del plan es requerido.', 'err'); return; }
+    if (!asTemplate && !selectedUser) { showToast('Seleccioná un socio antes de asignar.', 'err'); return; }
 
     setIsSaving(true);
     try {
@@ -209,16 +215,16 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
         });
       }
 
-      alert(asTemplate ? 'Plantilla guardada' : 'Plan asignado con éxito');
+      showToast(asTemplate ? 'Plantilla guardada con éxito.' : 'Plan asignado con éxito.', 'ok');
       handleReset();
       setActiveTab('manage');
       routineService.getPlanTemplates().then(setMyPlans);
     } catch (err) {
       console.error('Error detallado:', err);
       if (err instanceof z.ZodError) {
-        alert('Error de validación: ' + err.issues.map(e => e.message).join(', '));
+        showToast('Error de validación: ' + err.issues.map(e => e.message).join(', '), 'err');
       } else {
-        alert('Error al guardar: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+        showToast('Error al guardar: ' + (err instanceof Error ? err.message : 'Error desconocido'), 'err');
       }
     } finally {
       setIsSaving(false);
@@ -231,6 +237,27 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            className={`fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl font-label text-sm font-bold uppercase tracking-widest ${
+              toast.type === 'ok'
+                ? 'bg-green-500/20 border border-green-500/40 text-green-300'
+                : 'bg-error/20 border border-error/40 text-error'
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">
+              {toast.type === 'ok' ? 'check_circle' : 'error'}
+            </span>
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex gap-1 bg-surface-container-high p-1 rounded-sm w-fit">
         <button 
           onClick={() => setActiveTab('build')}
@@ -556,7 +583,7 @@ export default function RoutineEditor({ instructorId }: { instructorId: string }
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="font-headline text-2xl font-black uppercase italic italic">Asignar Plan</h3>
+                  <h3 className="font-headline text-2xl font-black uppercase italic">Asignar Plan</h3>
                   <p className="text-tertiary text-xs uppercase tracking-widest mt-1">Selecciona un socio de la lista</p>
                 </div>
                 <button 

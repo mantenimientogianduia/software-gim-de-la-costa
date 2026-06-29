@@ -122,6 +122,11 @@ export class ClassService {
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
   }
 
+  async cancelClass(classId: string): Promise<void> {
+    const classRef = doc(this.classesRef, classId);
+    await updateDoc(classRef, { status: 'cancelled' });
+  }
+
   async cancelBooking(bookingId: string, classId: string): Promise<void> {
     const bookingRef = doc(this.bookingsRef, bookingId);
     const classRef = doc(this.classesRef, classId);
