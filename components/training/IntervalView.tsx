@@ -50,21 +50,21 @@ export function IntervalView() {
   if (!state || !config) {
     return (
       <div className="flex flex-col gap-6 max-w-sm mx-auto py-8">
-        <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-white/60 mb-2">Configure Session</h3>
-        
+        <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-white/60 mb-2">Configurar Sesión</h3>
+
         <div className="space-y-4">
-          <InputGroup label="Rounds" value={tempConfig.rounds} onChange={(v) => setTempConfig(p => ({ ...p, rounds: v }))} min={1} />
-          <InputGroup label="Work (sec)" value={tempConfig.workMs / 1000} onChange={(v) => setTempConfig(p => ({ ...p, workMs: v * 1000 }))} min={1} />
-          <InputGroup label="Rest (sec)" value={tempConfig.restMs / 1000} onChange={(v) => setTempConfig(p => ({ ...p, restMs: v * 1000 }))} min={0} />
-          <InputGroup label="Prepare (sec)" value={(tempConfig.prepareMs ?? 0) / 1000} onChange={(v) => setTempConfig(p => ({ ...p, prepareMs: v * 1000 }))} min={0} />
+          <InputGroup label="Rondas" value={tempConfig.rounds} onChange={(v) => setTempConfig(p => ({ ...p, rounds: v }))} min={1} />
+          <InputGroup label="Trabajo (seg)" value={tempConfig.workMs / 1000} onChange={(v) => setTempConfig(p => ({ ...p, workMs: v * 1000 }))} min={1} />
+          <InputGroup label="Descanso (seg)" value={tempConfig.restMs / 1000} onChange={(v) => setTempConfig(p => ({ ...p, restMs: v * 1000 }))} min={0} />
+          <InputGroup label="Preparación (seg)" value={(tempConfig.prepareMs ?? 0) / 1000} onChange={(v) => setTempConfig(p => ({ ...p, prepareMs: v * 1000 }))} min={0} />
         </div>
 
-        <button 
+        <button
           onClick={handleStartWorkout}
           className="mt-8 bg-orange-600 hover:bg-orange-500 text-white font-mono uppercase tracking-[0.2em] py-4 px-8 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95"
         >
           <Play size={18} />
-          Launch Workout
+          Iniciar Sesión
         </button>
       </div>
     );
@@ -74,7 +74,7 @@ export function IntervalView() {
     <div className="flex flex-col items-center gap-8 py-8">
       <AnimatePresence mode="wait">
         {state.phase === WorkoutPhase.FINISHED ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center gap-6"
@@ -83,13 +83,13 @@ export function IntervalView() {
               <CheckCircle2 size={64} />
             </div>
             <div className="text-center">
-              <h2 className="text-2xl font-mono text-white">WORKOUT COMPLETE</h2>
-              <p className="text-white/40 font-mono text-xs mt-1">Excellent work!</p>
+              <h2 className="text-2xl font-mono text-white">SESIÓN COMPLETA</h2>
+              <p className="text-white/40 font-mono text-xs mt-1">¡Excelente trabajo!</p>
             </div>
-            <ControlButton onClick={handleReset} icon={RotateCcw} label="Finish" variant="secondary" />
+            <ControlButton onClick={handleReset} icon={RotateCcw} label="Finalizar" variant="secondary" />
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             key="active"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -102,21 +102,21 @@ export function IntervalView() {
                 </div>
                 <div className="mt-2 flex flex-col items-center">
                   <span className={`text-[10px] uppercase tracking-[0.2em] font-bold ${state.phase === WorkoutPhase.WORK ? 'text-orange-500' : 'text-blue-500'}`}>
-                    {state.phase}
+                    {({ WORK: 'TRABAJO', REST: 'DESCANSO', PREPARE: 'PREPARACIÓN' } as Record<string, string>)[String(state.phase)] ?? String(state.phase)}
                   </span>
                   <span className="text-[10px] uppercase tracking-[0.1em] text-white/40 mt-0.5">
-                    Round {state.currentRound} / {config.rounds}
+                    Ronda {state.currentRound} / {config.rounds}
                   </span>
                 </div>
               </div>
             </CircularProgress>
 
             <div className="flex gap-4">
-              <ControlButton onClick={handleReset} icon={Settings} variant="secondary" label="Quit" />
+              <ControlButton onClick={handleReset} icon={Settings} variant="secondary" label="Salir" />
               {state.isRunning ? (
-                <ControlButton onClick={pause} icon={Pause} variant="danger" label="Pause" />
+                <ControlButton onClick={pause} icon={Pause} variant="danger" label="Pausa" />
               ) : (
-                <ControlButton onClick={start} icon={Play} variant="primary" label="Resume" />
+                <ControlButton onClick={start} icon={Play} variant="primary" label="Continuar" />
               )}
             </div>
           </motion.div>

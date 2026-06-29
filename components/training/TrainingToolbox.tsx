@@ -13,10 +13,10 @@ export function TrainingToolbox() {
   const [activeTool, setActiveTool] = useState<ToolType>('STOPWATCH');
 
   const tabs = [
-    { id: 'STOPWATCH' as ToolType, label: 'Stopwatch', icon: Timer },
-    { id: 'INTERVAL' as ToolType, label: 'Interval', icon: Repeat },
-    { id: 'COUNTDOWN' as ToolType, label: 'Timer', icon: Hourglass },
-//    { id: 'HISTORY' as ToolType, label: 'Logs', icon: History },
+    { id: 'STOPWATCH' as ToolType, label: 'Cronómetro', icon: Timer },
+    { id: 'INTERVAL' as ToolType, label: 'Intervalos', icon: Repeat },
+    { id: 'COUNTDOWN' as ToolType, label: 'Temporizador', icon: Hourglass },
+//    { id: 'HISTORY' as ToolType, label: 'Historial', icon: History },
   ];
 
   return (
@@ -68,7 +68,7 @@ export function TrainingToolbox() {
 
       {/* Footer Branding */}
       <div className="px-8 py-4 bg-black/40 border-t border-white/5 flex justify-between items-center">
-        <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-white/20">GYM DE LA COSTA // TRAINING CORE V1.0</span>
+        <span className="font-mono text-[8px] uppercase tracking-[0.2em] text-white/20">GYM DE LA COSTA // CRONÓMETRO PRO</span>
         <div className="flex gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50 animate-pulse" />
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />

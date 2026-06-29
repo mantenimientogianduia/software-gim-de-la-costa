@@ -50,20 +50,20 @@ export function CountdownView() {
   if (setupMode) {
     return (
       <div className="flex flex-col gap-8 max-w-sm mx-auto py-8">
-        <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-white/60 text-center">Set Timer</h3>
-        
+        <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-white/60 text-center">Configurar Temporizador</h3>
+
         <div className="flex justify-center items-center gap-4">
-          <TimeAdjuster label="H" value={hours} onChange={setHours} max={23} />
+          <TimeAdjuster label="HS" value={hours} onChange={setHours} max={23} />
           <span className="text-2xl font-mono text-white/20">:</span>
-          <TimeAdjuster label="M" value={minutes} onChange={setMinutes} max={59} />
+          <TimeAdjuster label="MIN" value={minutes} onChange={setMinutes} max={59} />
           <span className="text-2xl font-mono text-white/20">:</span>
-          <TimeAdjuster label="S" value={seconds} onChange={setSeconds} max={59} />
+          <TimeAdjuster label="SEG" value={seconds} onChange={setSeconds} max={59} />
         </div>
 
         <div className="flex flex-col gap-3">
           <label className="font-mono text-[10px] uppercase tracking-widest text-white/40 flex items-center gap-2">
             <Music2 size={12} />
-            Alarm Sound
+            Sonido de Alarma
           </label>
           <div className="grid grid-cols-3 gap-2">
             {(Object.values(AlarmType) as AlarmType[]).map((type) => (
@@ -83,13 +83,13 @@ export function CountdownView() {
           </div>
         </div>
 
-        <button 
+        <button
           onClick={handleStart}
           disabled={totalRequestedMs === 0}
           className="bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono uppercase tracking-[0.2em] py-4 px-8 rounded-full flex items-center justify-center gap-2 transition-all active:scale-95"
         >
           <Play size={18} />
-          Start Timer
+          Iniciar Temporizador
         </button>
       </div>
     );
@@ -113,12 +113,12 @@ export function CountdownView() {
               <BellRing size={80} className="animate-bounce" />
             </div>
             <div className="text-center">
-              <h2 className="text-3xl font-mono text-white tracking-widest">TIME'S UP!</h2>
-              <button 
+              <h2 className="text-3xl font-mono text-white tracking-widest">¡TIEMPO!</h2>
+              <button
                 onClick={handleReset}
                 className="mt-6 font-mono text-xs text-red-400 hover:text-red-300 uppercase tracking-widest underline underline-offset-4"
               >
-                Dismiss Alarm
+                Detener Alarma
               </button>
             </div>
           </motion.div>
@@ -135,17 +135,17 @@ export function CountdownView() {
                   {formatMs(timeLeftMs)}
                 </div>
                 <div className="mt-2 text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 font-mono">
-                  Counting Down
+                  Contando...
                 </div>
               </div>
             </CircularProgress>
 
             <div className="flex gap-4">
-              <ControlButton onClick={handleReset} icon={RotateCcw} variant="secondary" label="Reset" />
+              <ControlButton onClick={handleReset} icon={RotateCcw} variant="secondary" label="Reiniciar" />
               {isRunning ? (
-                <ControlButton onClick={pause} icon={Pause} variant="danger" label="Pause" />
+                <ControlButton onClick={pause} icon={Pause} variant="danger" label="Pausa" />
               ) : (
-                <ControlButton onClick={start} icon={Play} variant="primary" label="Resume" />
+                <ControlButton onClick={start} icon={Play} variant="primary" label="Continuar" />
               )}
             </div>
           </motion.div>
@@ -161,13 +161,13 @@ function TimeAdjuster({ label, value, onChange, max }: { label: string, value: n
       <button onClick={() => onChange(value < max ? value + 1 : 0)} className="text-white/20 hover:text-white transition-colors">
         <ChevronUp size={24} />
       </button>
-      <div className="bg-white/5 border border-white/10 rounded-lg w-16 h-20 flex flex-col items-center justify-center">
-        <span className="text-3xl font-mono text-white leading-none">{value.toString().padStart(2, '0')}</span>
-        <span className="text-[8px] font-mono text-white/20 absolute -bottom-4">{label}</span>
+      <div className="bg-white/5 border border-white/10 rounded-lg w-16 h-20 flex items-center justify-center">
+        <span className="text-3xl font-mono text-white leading-none tabular-nums">{value.toString().padStart(2, '0')}</span>
       </div>
       <button onClick={() => onChange(value > 0 ? value - 1 : max)} className="text-white/20 hover:text-white transition-colors">
         <ChevronDown size={24} />
       </button>
+      <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">{label}</span>
     </div>
   );
 }

@@ -15,30 +15,30 @@ export function StopwatchView() {
           {formatMs(elapsedMs, true)}
         </span>
         <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 mt-2 font-mono">
-          Stopwatch
+          Cronómetro
         </span>
       </CircularProgress>
 
       <div className="flex gap-4">
-        <ControlButton 
-          onClick={reset} 
-          icon={RotateCcw} 
+        <ControlButton
+          onClick={reset}
+          icon={RotateCcw}
           variant="secondary"
-          label="Reset"
+          label="Reiniciar"
         />
         {isRunning ? (
-          <ControlButton 
-            onClick={pause} 
-            icon={Pause} 
+          <ControlButton
+            onClick={pause}
+            icon={Pause}
             variant="danger"
-            label="Pause"
+            label="Pausa"
           />
         ) : (
-          <ControlButton 
-            onClick={start} 
-            icon={Play} 
+          <ControlButton
+            onClick={start}
+            icon={Play}
             variant="primary"
-            label="Start"
+            label="Iniciar"
           />
         )}
       </div>
