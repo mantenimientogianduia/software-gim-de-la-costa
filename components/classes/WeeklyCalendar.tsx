@@ -142,7 +142,7 @@ export default function WeeklyCalendar({ classes, onClassClick, bookedClassIds =
               const isToday = day.toDateString() === new Date().toDateString();
               return (
                 <div key={i} className={`h-16 flex flex-col items-center justify-center border-r border-outline-variant/10 ${isToday ? 'bg-primary/5' : ''}`}>
-                  <span className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-1">{DAYS[(i + 1) % 7].name}</span>
+                  <span className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-1">{DAYS[i].name}</span>
                   <span className={`font-headline text-xl font-black ${isToday ? 'text-primary' : ''}`}>{day.getDate()}</span>
                 </div>
               );

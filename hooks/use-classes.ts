@@ -4,7 +4,7 @@ import { classService, GymClass, Booking } from '@/services/class.service';
 
 export function useClasses() {
   const [classes, setClasses] = useState<GymClass[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchClasses = useCallback(async () => {
@@ -28,7 +28,7 @@ export function useClasses() {
 
 export function useUserBookings(userId: string) {
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchBookings = useCallback(async () => {
     if (!userId) return;
