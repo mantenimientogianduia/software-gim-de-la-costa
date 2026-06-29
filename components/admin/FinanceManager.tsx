@@ -20,8 +20,8 @@ import { Timestamp } from 'firebase/firestore';
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cash: 'Efectivo',
   transfer: 'Transferencia',
-  debit: 'Debito',
-  credit: 'Credito',
+  debit: 'Débito',
+  credit: 'Crédito',
   mercado_pago: 'Mercado Pago',
   other: 'Otro',
 };
