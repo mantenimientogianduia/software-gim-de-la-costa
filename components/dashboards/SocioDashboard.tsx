@@ -13,10 +13,25 @@ import SocioPayments from '@/components/socio/SocioPayments';
 
 export default function SocioDashboard({ profile }: { profile: UserProfile & { id: string } }) {
   const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer' | 'streak' | 'profile' | 'community' | 'pagos'>('home');
+
   const membershipDaysLeft = (() => {
     if (!profile.membershipValidUntil?.toDate) return null;
     return Math.ceil((profile.membershipValidUntil.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   })();
+
+  const membershipStatus: 'expired' | 'warning' | 'ok' | 'unknown' = (() => {
+    if (membershipDaysLeft === null) return 'unknown';
+    if (membershipDaysLeft <= 0) return 'expired';
+    if (membershipDaysLeft <= 7) return 'warning';
+    return 'ok';
+  })();
+
+  const membershipColor = {
+    expired: 'text-error',
+    warning: 'text-yellow-400',
+    ok: 'text-green-400',
+    unknown: 'text-tertiary',
+  }[membershipStatus];
 
   return (
     <div className="min-h-screen bg-surface text-on-surface pb-24 md:pb-0 flex flex-col md:flex-row">
@@ -198,15 +213,31 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                                  <p className="font-headline font-bold text-xl truncate">{profile.currentPlan || 'Sin asignar'}</p>
                                </div>
                              </div>
-                             <div className="bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between border-b border-b-primary/30">
-                               <span className="material-symbols-outlined text-primary mb-4">event_available</span>
+                             <button
+                               onClick={() => setActiveTab('pagos')}
+                               className={`bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between text-left transition-all hover:bg-surface-container-high ${
+                                 membershipStatus === 'expired' ? 'border-b-2 border-b-error' :
+                                 membershipStatus === 'warning' ? 'border-b-2 border-b-yellow-400' :
+                                 'border-b border-b-primary/30'
+                               }`}
+                             >
+                               <span className={`material-symbols-outlined mb-4 ${membershipColor}`}>
+                                 {membershipStatus === 'expired' ? 'event_busy' : membershipStatus === 'warning' ? 'event_upcoming' : 'event_available'}
+                               </span>
                                <div>
-                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Membresia</p>
-                                 <p className="font-headline font-bold text-2xl">
-                                   {membershipDaysLeft === null ? 'Sin datos' : membershipDaysLeft < 0 ? 'Vencida' : `${membershipDaysLeft}d`}
+                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Membresía</p>
+                                 <p className={`font-headline font-bold text-2xl ${membershipColor}`}>
+                                   {membershipDaysLeft === null ? 'Sin datos' :
+                                    membershipDaysLeft <= 0 ? 'Vencida' :
+                                    `${membershipDaysLeft}d`}
                                  </p>
+                                 {(membershipStatus === 'expired' || membershipStatus === 'warning') && (
+                                   <p className="font-label text-[9px] uppercase tracking-widest mt-1 text-primary underline">
+                                     {membershipStatus === 'expired' ? 'Regularizar →' : 'Pagar cuota →'}
+                                   </p>
+                                 )}
                                </div>
-                             </div>
+                             </button>
                            </div>
                          </section>
                        </>
@@ -251,21 +282,37 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                             {profile.membershipValidUntil ? (
                                <>
                                   <div>
-                                     <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-1">Tu cuenta vence el</p>
-                                     <p className="font-headline text-3xl font-black italic tracking-tighter text-primary">
+                                     <p className="font-label text-[10px] uppercase tracking-widest text-tertiary mb-1">
+                                       {membershipStatus === 'expired' ? 'Venció el' : 'Vence el'}
+                                     </p>
+                                     <p className={`font-headline text-3xl font-black italic tracking-tighter ${membershipColor}`}>
                                         {profile.membershipValidUntil.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
                                      </p>
                                   </div>
-                                  <div className="h-1 bg-surface-container-high rounded-full overflow-hidden">
-                                     <div className={`h-full bg-primary transition-all duration-1000 ${
-                                        (profile.membershipValidUntil.toDate().getTime() - new Date().getTime()) < 0 ? 'bg-error w-full' : 'w-2/3'
-                                     }`}></div>
+                                  <div className="h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                                     <div className={`h-full transition-all duration-1000 ${
+                                        membershipStatus === 'expired' ? 'bg-error w-full' :
+                                        membershipStatus === 'warning' ? 'bg-yellow-400 w-1/4' :
+                                        'bg-primary w-2/3'
+                                     }`} />
                                   </div>
-                                  <p className="font-body text-xs text-tertiary italic">
-                                     {(profile.membershipValidUntil.toDate().getTime() - new Date().getTime()) < 0 
-                                        ? 'Tu cuota está vencida. Por favor, regulariza tu situación en administración.' 
-                                        : 'Tu membresía se encuentra activa y vigente.'}
-                                  </p>
+                                  {membershipStatus === 'expired' ? (
+                                    <button
+                                      onClick={() => setActiveTab('pagos')}
+                                      className="w-full py-2.5 px-4 rounded-lg bg-error/20 border border-error/40 text-error font-label text-[10px] font-black uppercase tracking-widest hover:bg-error/30 transition-colors text-center"
+                                    >
+                                      Regularizar cuota →
+                                    </button>
+                                  ) : membershipStatus === 'warning' ? (
+                                    <button
+                                      onClick={() => setActiveTab('pagos')}
+                                      className="w-full py-2.5 px-4 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 font-label text-[10px] font-black uppercase tracking-widest hover:bg-yellow-500/30 transition-colors text-center"
+                                    >
+                                      Pagar antes de que venza →
+                                    </button>
+                                  ) : (
+                                    <p className="font-body text-xs text-tertiary italic">Tu membresía se encuentra activa y vigente.</p>
+                                  )}
                                </>
                             ) : (
                                <div className="py-4 text-center">
