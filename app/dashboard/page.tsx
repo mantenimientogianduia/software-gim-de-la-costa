@@ -28,8 +28,15 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-         <div className="font-label text-primary font-bold uppercase tracking-widest animate-pulse">CARGANDO...</div>
+      <div className="min-h-screen bg-surface flex flex-col items-center justify-center gap-6">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-4 border-primary/10" />
+          <div className="absolute inset-0 rounded-full border-4 border-t-primary animate-spin" />
+          <div className="absolute inset-2 rounded-full bg-primary/5 flex items-center justify-center">
+            <span className="material-symbols-outlined text-primary text-xl">fitness_center</span>
+          </div>
+        </div>
+        <p className="font-label text-[10px] uppercase tracking-[0.3em] text-tertiary animate-pulse">Verificando sesión...</p>
       </div>
     );
   }

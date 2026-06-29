@@ -18,25 +18,24 @@ export default function LoginPage() {
     setError('');
     setIsPending(false);
     setLoading(true);
+    let requiresDni = false;
     try {
-      const { user, isNewUser } = await authService.loginWithGoogle();
-      
-      let profile = await userService.getUserProfile(user.uid);
-      
+      const { user } = await authService.loginWithGoogle();
+      const profile = await userService.getUserProfile(user.uid);
+
       if (!profile) {
         setPendingUser(user);
         setNeedsDni(true);
+        requiresDni = true;
+      } else if (profile.status === 'pending' && profile.role !== 'admin') {
+        setIsPending(true);
       } else {
-        if (profile.status === 'pending' && profile.role !== 'admin') {
-          setIsPending(true);
-        } else {
-          router.push('/dashboard');
-        }
+        router.push('/dashboard');
       }
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión con Google');
     } finally {
-      if (!needsDni) setLoading(false);
+      if (!requiresDni) setLoading(false);
     }
   };
 
