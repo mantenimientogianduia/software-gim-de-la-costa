@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface WeeklyCalendarProps {
   classes: GymClass[];
   onClassClick?: (gymClass: GymClass) => void;
+  bookedClassIds?: string[];
 }
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 6:00 to 22:00
@@ -19,7 +20,7 @@ const DAYS = [
   { name: 'Dom', value: 0 },
 ];
 
-export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendarProps) {
+export default function WeeklyCalendar({ classes, onClassClick, bookedClassIds = [] }: WeeklyCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const weekHeading = useMemo(() => {
@@ -185,7 +186,11 @@ export default function WeeklyCalendar({ classes, onClassClick }: WeeklyCalendar
                         whileHover={{ scale: 1.02, zIndex: 10 }}
                         onClick={() => onClassClick?.(c)}
                         style={getPositionStyles(c)}
-                        className="absolute left-1 right-1 bg-primary/90 text-on-primary rounded-lg shadow-glow-error p-2 cursor-pointer overflow-hidden border border-white/20 backdrop-blur-sm group"
+                        className={`absolute left-1 right-1 rounded-lg p-2 cursor-pointer overflow-hidden border backdrop-blur-sm group ${
+                          bookedClassIds.includes(c.id!)
+                            ? 'bg-green-500/80 text-white border-green-400/40 shadow-[0_0_12px_rgba(74,222,128,0.3)]'
+                            : 'bg-primary/90 text-on-primary border-white/20 shadow-glow-error'
+                        }`}
                         aria-label={`Ver detalle de ${c.title}`}
                       >
                         <div className="flex h-full min-h-0 items-center">

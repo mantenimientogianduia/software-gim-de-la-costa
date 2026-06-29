@@ -10,6 +10,88 @@ import StreakDisplay from '@/components/training/StreakDisplay';
 import PersonalInfo from '@/components/profile/PersonalInfo';
 import GymPresence from '@/components/social/GymPresence';
 import SocioPayments from '@/components/socio/SocioPayments';
+import { useClasses, useUserBookings } from '@/hooks/use-classes';
+
+function NextClassWidget({ userId, onGoToClasses }: { userId: string; onGoToClasses: () => void }) {
+  const { classes, loading: classesLoading } = useClasses();
+  const { bookings, loading: bookingsLoading } = useUserBookings(userId);
+
+  const nextClass = (() => {
+    if (classesLoading || bookingsLoading) return undefined;
+    const bookedIds = new Set(bookings.map(b => b.classId));
+    const upcoming = classes
+      .filter(c => bookedIds.has(c.id!) && c.startTime.toDate() > new Date())
+      .sort((a, b) => a.startTime.toDate().getTime() - b.startTime.toDate().getTime());
+    return upcoming[0] ?? null;
+  })();
+
+  const isLoading = classesLoading || bookingsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="bg-surface-container-low p-6 md:p-8 rounded-lg ghost-border animate-pulse">
+        <div className="w-24 h-3 rounded bg-surface-container-high mb-4" />
+        <div className="w-40 h-6 rounded bg-surface-container-high mb-2" />
+        <div className="w-32 h-4 rounded bg-surface-container-high" />
+      </div>
+    );
+  }
+
+  if (!nextClass) {
+    return (
+      <button
+        onClick={onGoToClasses}
+        className="bg-surface-container-low p-6 md:p-8 rounded-lg ghost-border hover:bg-surface-container-high transition-all text-left flex flex-col justify-between gap-6 border border-dashed border-outline-variant/20"
+      >
+        <div>
+          <span className="font-label text-[10px] uppercase tracking-widest text-tertiary block mb-2">Próxima Clase</span>
+          <p className="font-headline font-bold text-2xl uppercase text-tertiary italic">Sin reservas</p>
+          <p className="font-label text-[10px] text-tertiary/60 uppercase tracking-widest mt-1">No tenés clases reservadas</p>
+        </div>
+        <span className="self-start flex items-center gap-2 font-label text-[10px] font-bold uppercase tracking-widest text-primary">
+          Ver horarios <span className="material-symbols-outlined text-sm">arrow_forward</span>
+        </span>
+      </button>
+    );
+  }
+
+  const start = nextClass.startTime.toDate();
+  const end = nextClass.endTime?.toDate?.();
+  const isToday = start.toDateString() === new Date().toDateString();
+  const isTomorrow = (() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return start.toDateString() === tomorrow.toDateString();
+  })();
+  const dayLabel = isToday ? 'Hoy' : isTomorrow ? 'Mañana' : start.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
+
+  return (
+    <button
+      onClick={onGoToClasses}
+      className="bg-surface-container-low p-6 md:p-8 rounded-lg ghost-border hover:bg-surface-container-high transition-all text-left flex flex-col justify-between gap-4 border-l-4 border-l-green-500 shadow-[0_0_20px_rgba(74,222,128,0.08)]"
+    >
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+          <span className="font-label text-[10px] uppercase tracking-widest text-green-400">Próxima Clase Reservada</span>
+        </div>
+        <h3 className="font-headline font-bold text-2xl uppercase tracking-tight">{nextClass.title}</h3>
+        <div className="flex flex-wrap gap-3 mt-2">
+          <span className="font-label text-[10px] uppercase tracking-widest text-tertiary">
+            {dayLabel}
+          </span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-black">
+            {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} hs
+            {end ? ` — ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} hs` : ''}
+          </span>
+        </div>
+      </div>
+      <span className="self-start flex items-center gap-2 font-label text-[10px] font-bold uppercase tracking-widest text-green-400">
+        Ver mis clases <span className="material-symbols-outlined text-sm">arrow_forward</span>
+      </span>
+    </button>
+  );
+}
 
 export default function SocioDashboard({ profile }: { profile: UserProfile & { id: string } }) {
   const [activeTab, setActiveTab] = useState<'home' | 'classes' | 'routine' | 'timer' | 'streak' | 'profile' | 'community' | 'pagos'>('home');
@@ -180,29 +262,45 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                            <QRGenerator dni={profile.dni} />
                          </div>
 
-                         <section onClick={() => setActiveTab('routine')} className="cursor-pointer bg-surface-container-low p-6 md:p-8 rounded-lg relative overflow-hidden ghost-border hover:bg-surface-container-high transition-all">
-                           <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                             <div>
-                               <span className="font-label text-primary text-sm uppercase tracking-widest mb-2 block">Acceso Rápido</span>
-                               <h2 className="font-headline font-bold text-3xl md:text-4xl mb-2 italic">VER MI RUTINA</h2>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <section onClick={() => setActiveTab('routine')} className="cursor-pointer bg-surface-container-low p-6 md:p-8 rounded-lg relative overflow-hidden ghost-border hover:bg-surface-container-high transition-all">
+                             <div className="relative z-10 flex flex-col justify-between h-full gap-6">
+                               <div>
+                                 <span className="font-label text-primary text-[10px] uppercase tracking-widest mb-2 block">Acceso Rápido</span>
+                                 <h2 className="font-headline font-bold text-3xl md:text-4xl italic">VER MI RUTINA</h2>
+                               </div>
+                               <button className="self-start bg-gradient-primary text-on-primary font-label text-[10px] font-bold uppercase tracking-wider py-3 px-6 rounded-sm shadow-glow flex items-center gap-2 hover:scale-[1.02] transition-transform">
+                                 Comenzar <span className="material-symbols-outlined">arrow_forward</span>
+                               </button>
                              </div>
-                             <button className="bg-gradient-primary text-on-primary font-label text-sm font-bold uppercase tracking-wider py-3 px-8 rounded-sm shadow-glow flex items-center gap-2 hover:scale-[1.02] transition-transform">
-                               Comenzar <span className="material-symbols-outlined">arrow_forward</span>
-                             </button>
-                           </div>
-                         </section>
+                           </section>
+
+                           <NextClassWidget
+                             userId={profile.email}
+                             onGoToClasses={() => setActiveTab('classes')}
+                           />
+                         </div>
 
                          <section className="bg-surface-container-low p-6 md:p-8 rounded-lg ghost-border">
                            <div className="flex justify-between items-center mb-6">
                              <h3 className="font-headline font-bold text-xl uppercase tracking-tight">Tu Progreso</h3>
                            </div>
-                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                             <div className="bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between border-b border-b-primary/30">
+                               <span className="material-symbols-outlined text-primary mb-4">emoji_events</span>
+                               <div>
+                                 <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Racha Actual</p>
+                                 <p className="font-headline font-bold text-2xl">
+                                   {profile.currentStreak ?? 0}<span className="text-lg text-primary"> días</span>
+                                 </p>
+                               </div>
+                             </div>
                              <div className="bg-surface-container-lowest p-4 rounded-sm flex flex-col justify-between border-b border-b-primary/30">
                                <span className="material-symbols-outlined text-primary mb-4">local_fire_department</span>
                                <div>
                                  <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Meta Semanal</p>
                                  <p className="font-headline font-bold text-2xl">
-                                   {profile.weeklyTrainingGoal || 0}<span className="text-lg text-primary"> dias</span>
+                                   {profile.weeklyTrainingGoal || 0}<span className="text-lg text-primary"> días</span>
                                  </p>
                                </div>
                              </div>
@@ -210,7 +308,7 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                                <span className="material-symbols-outlined text-primary mb-4">assignment</span>
                                <div>
                                  <p className="font-label text-tertiary text-[10px] uppercase tracking-wider">Plan Actual</p>
-                                 <p className="font-headline font-bold text-xl truncate">{profile.currentPlan || 'Sin asignar'}</p>
+                                 <p className="font-headline font-bold text-sm truncate">{profile.currentPlan || 'Sin asignar'}</p>
                                </div>
                              </div>
                              <button
