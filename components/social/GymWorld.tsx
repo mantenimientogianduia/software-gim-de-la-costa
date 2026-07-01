@@ -4,388 +4,391 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PublicGymPresence, socialService } from '@/services/social.service';
 import AvatarSprite, { AvatarConfig, DEFAULT_AVATAR } from './AvatarSprite';
 
-interface ExtendedPresence extends PublicGymPresence {
-  avatarConfig?: Partial<AvatarConfig>;
-}
+interface ExtendedPresence extends PublicGymPresence { avatarConfig?: Partial<AvatarConfig>; }
 
-// ── Isometric coordinate math ────────────────────────────────────────────────
-// Near corner (viewer) at screen (400, 420).
-// Each "left" unit  → screen (-38, -16)
-// Each "right" unit → screen (+38, -16)
-// Each "up" unit    → screen (  0, -40)
-const OX = 400, OY = 420;
-const DLx = -38, DLy = -16;
-const DRx =  38, DRy = -16;
-const DZy = -40;
+// ── Isometric math ────────────────────────────────────────────────────────────
+// Near corner at (400,440). Room 10L × 10R, wall height 5 units.
+// DL: per left step → screen (-34,-14). DR: right step → (+34,-14). DZ: up → (0,-36).
+const OX=400, OY=440;
+const DLx=-34, DLy=-14, DRx=34, DRy=-14, DZy=-36;
+const L=10, R=10, WH=5;
+function bx(l:number,r:number){return Math.round(OX+l*DLx+r*DRx);}
+function by(l:number,r:number,z=0){return Math.round(OY+l*DLy+r*DRy+z*DZy);}
+function p(l:number,r:number,z=0){return `${bx(l,r)},${by(l,r,z)}`;}
+function P(...pts:[number,number,number?][]){return pts.map(([l,r,z=0])=>p(l,r,z)).join(' ');}
 
-function bx(l: number, r: number) { return Math.round(OX + l * DLx + r * DRx); }
-function by(l: number, r: number, z = 0) { return Math.round(OY + l * DLy + r * DRy + z * DZy); }
-function p(l: number, r: number, z = 0) { return `${bx(l, r)},${by(l, r, z)}`; }
-function P(...pts: [number, number, number?][]) { return pts.map(([l, r, z = 0]) => p(l, r, z)).join(' '); }
-
-// Avatar floor slots (l, r) — front-center area, away from equipment
-const AVATAR_SLOTS: [number, number][] = [
-  [1, 1], [2, 1], [1, 2], [2, 2], [3, 2],
-  [2, 3], [1, 3], [3, 3], [4, 2], [2, 4],
+// Avatar slots (l,r) in front area of room
+const SLOTS:[number,number][]=[
+  [2,2],[3,2],[2,3],[4,2],[3,3],[2,4],[5,2],[4,3],[3,4],[5,3],
 ];
 
-// ── 3-face isometric box ──────────────────────────────────────────────────────
-function IsoBox({ l, r, lw, rw, h, top, left, right, stroke = '#0005', sw = 0.8 }: {
-  l: number; r: number; lw: number; rw: number; h: number;
-  top: string; left: string; right: string; stroke?: string; sw?: number;
-}) {
-  return (
-    <g>
-      <polygon points={P([l,r],[l+lw,r],[l+lw,r,h],[l,r,h])}     fill={left}  stroke={stroke} strokeWidth={sw} />
-      <polygon points={P([l,r],[l,r+rw],[l,r+rw,h],[l,r,h])}     fill={right} stroke={stroke} strokeWidth={sw} />
-      <polygon points={P([l,r,h],[l+lw,r,h],[l+lw,r+rw,h],[l,r+rw,h])} fill={top} stroke={stroke} strokeWidth={sw} />
+// ── Flat-color iso box ────────────────────────────────────────────────────────
+function Box({l,r,lw,rw,h,top,lf,rf,stroke='#05080e',sw=1}:{
+  l:number;r:number;lw:number;rw:number;h:number;
+  top:string;lf:string;rf:string;stroke?:string;sw?:number;
+}){
+  return(
+    <g stroke={stroke} strokeWidth={sw} strokeLinejoin="miter">
+      <polygon points={P([l,r],[l+lw,r],[l+lw,r,h],[l,r,h])}        fill={lf}/>
+      <polygon points={P([l,r],[l,r+rw],[l,r+rw,h],[l,r,h])}        fill={rf}/>
+      <polygon points={P([l,r,h],[l+lw,r,h],[l+lw,r+rw,h],[l,r+rw,h])} fill={top}/>
     </g>
   );
 }
 
 // ── Profile panel ─────────────────────────────────────────────────────────────
-function ProfilePanel({ profile, onClose }: { profile: ExtendedPresence; onClose: () => void }) {
-  const cfg: AvatarConfig = { ...DEFAULT_AVATAR, ...profile.avatarConfig };
-  const isAnon = profile.socialVisibility === 'anonymous';
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+function ProfilePanel({profile,onClose}:{profile:ExtendedPresence;onClose:()=>void}){
+  const cfg:AvatarConfig={...DEFAULT_AVATAR,...profile.avatarConfig};
+  const isAnon=profile.socialVisibility==='anonymous';
+  return(
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
       className="fixed inset-0 z-[90] flex items-end md:items-center justify-center p-4" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ scale: 0.92, y: 24 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.92, y: 24 }}
-        className="relative w-full max-w-sm bg-surface-container-low rounded-2xl ghost-border p-6 shadow-2xl">
-        <button onClick={onClose} className="absolute top-4 right-4 h-8 w-8 rounded bg-surface-container-high flex items-center justify-center">
-          <span className="material-symbols-outlined text-sm">close</span>
+      <button className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose}/>
+      <motion.div initial={{scale:0.9,y:24}} animate={{scale:1,y:0}} exit={{scale:0.9,y:24}}
+        className="relative w-full max-w-sm rounded-none border-2 border-[#4dabf7] bg-[#0d1117] p-6 shadow-[4px_4px_0_#4dabf7]"
+        style={{fontFamily:'monospace'}}>
+        <button onClick={onClose}
+          className="absolute top-3 right-3 w-7 h-7 border border-[#4dabf7] text-[#4dabf7] flex items-center justify-center text-xs font-bold hover:bg-[#4dabf7] hover:text-black transition-colors">
+          X
         </button>
-        <div className="flex flex-col items-center gap-3 pt-2">
-          <AvatarSprite config={cfg} size={72} isAnonymous={isAnon} />
+        <div className="flex flex-col items-center gap-3 pt-1">
+          <AvatarSprite config={cfg} size={64} isAnonymous={isAnon}/>
           <div className="text-center">
-            <p className="font-label text-[9px] uppercase tracking-[0.25em] text-primary font-black mb-1">Entrenando ahora</p>
-            <h3 className="font-headline text-2xl font-black uppercase tracking-tight">{profile.displayName}</h3>
-            {profile.instagram && <p className="font-label text-[10px] uppercase tracking-widest text-primary mt-1">{profile.instagram}</p>}
+            <p className="text-[9px] uppercase tracking-[0.3em] text-[#4dabf7] font-bold mb-1">▶ ENTRENANDO AHORA</p>
+            <h3 className="text-xl font-bold uppercase tracking-wider text-white">{profile.displayName}</h3>
+            {profile.instagram&&<p className="text-[10px] tracking-widest text-[#4dabf7] mt-1">{profile.instagram}</p>}
           </div>
         </div>
-        {profile.publicBio && <p className="mt-5 text-sm text-tertiary leading-relaxed text-center">{profile.publicBio}</p>}
-        {typeof profile.currentStreak === 'number' && profile.currentStreak > 0 && (
-          <div className="mt-5 bg-surface-container-high rounded-xl p-4 flex items-center gap-4">
-            <span className="material-symbols-outlined text-3xl text-primary">local_fire_department</span>
+        {profile.publicBio&&<p className="mt-4 text-xs text-[#8090a0] leading-relaxed text-center border-t border-[#4dabf730] pt-4">{profile.publicBio}</p>}
+        {typeof profile.currentStreak==='number'&&profile.currentStreak>0&&(
+          <div className="mt-4 border border-[#f0600030] bg-[#f060000a] p-3 flex items-center gap-3">
+            <span className="text-2xl">🔥</span>
             <div>
-              <p className="font-label text-[10px] uppercase tracking-widest text-tertiary">Racha actual</p>
-              <p className="font-headline text-3xl font-black text-primary">{profile.currentStreak} días</p>
+              <p className="text-[8px] uppercase tracking-widest text-[#8090a0]">RACHA</p>
+              <p className="text-2xl font-bold text-[#f06020]">{profile.currentStreak} DÍAS</p>
             </div>
           </div>
         )}
-        {isAnon && <p className="mt-5 text-sm text-tertiary italic text-center">Este socio eligió entrenar de forma anónima.</p>}
+        {isAnon&&<p className="mt-4 text-xs text-[#8090a0] italic text-center">Socio anónimo.</p>}
       </motion.div>
     </motion.div>
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
-export default function GymWorld() {
-  const [profiles, setProfiles] = useState<ExtendedPresence[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<ExtendedPresence | null>(null);
+export default function GymWorld(){
+  const [profiles,setProfiles]=useState<ExtendedPresence[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [selected,setSelected]=useState<ExtendedPresence|null>(null);
 
-  useEffect(() => {
-    const unsub = socialService.getPublicGymPresence((data) => {
+  useEffect(()=>{
+    const unsub=socialService.getPublicGymPresence(data=>{
       setProfiles(data as ExtendedPresence[]);
       setLoading(false);
     });
     return unsub;
-  }, []);
+  },[]);
 
-  const isEmpty = !loading && profiles.length === 0;
+  const isEmpty=!loading&&profiles.length===0;
+  const sorted=[...profiles]
+    .map((profile,i)=>({profile,slot:SLOTS[i%SLOTS.length]}))
+    .sort((a,b)=>(b.slot[0]+b.slot[1])-(a.slot[0]+a.slot[1]));
 
-  // Sort back-to-front so front avatars render on top
-  const sortedAvatars = profiles
-    .map((profile, idx) => ({ profile, slot: AVATAR_SLOTS[idx % AVATAR_SLOTS.length] }))
-    .sort((a, b) => (b.slot[0] + b.slot[1]) - (a.slot[0] + a.slot[1]));
+  // ── Color palette ──────────────────────────────────────────────────────────
+  const C={
+    floor:'#161824',        floorAlt:'#1a1e2c',
+    wallL:'#1e2030',        wallLd:'#161826',  wallLhi:'#262838',
+    wallR:'#181a28',        wallRd:'#121420',  wallRhi:'#1e2030',
+    brick:'#1a1c2a',        mortar:'#0e1018',
+    metal:'#2a2e3e',        metalD:'#1a1e2c',  metalL:'#3a3e50',
+    metalHi:'#4a5060',
+    plate:'#c85000',        plateL:'#f06020',  plateD:'#8a3500',
+    neon:'#4dabf7',         neonD:'#1a4a80',
+    bench:'#1a1e32',        benchL:'#262a42',
+    rubber:'#1c1e2c',
+    outline:'#05080e',
+  };
 
-  return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+  // Precompute key room vertices
+  const nearX=bx(0,0), nearY=by(0,0);
+  const leftX=bx(L,0), leftY=by(L,0);
+  const rightX=bx(0,R), rightY=by(0,R);
+  const backX=bx(L,R), backY=by(L,R);
+  const nearTopY=by(0,0,WH);
+  const leftTopY=by(L,0,WH);
+  const rightTopY=by(0,R,WH);
+
+  return(
+    <div className="space-y-3 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 className="font-headline text-3xl font-black uppercase tracking-tight">Comunidad en el gym</h2>
-          <p className="mt-1 text-sm text-tertiary">
-            {loading ? 'Conectando...' : profiles.length === 0
-              ? 'Nadie visible ahora mismo.'
-              : `${profiles.length} socio${profiles.length !== 1 ? 's' : ''} entrenando ahora`}
+          <p className="mt-1 text-sm text-tertiary" style={{fontFamily:'monospace'}}>
+            {loading?'CONECTANDO...'
+              :profiles.length===0?'SALA VACÍA'
+              :`${profiles.length} SOCIO${profiles.length!==1?'S':''} ENTRENANDO`}
           </p>
         </div>
-        {profiles.length > 0 && (
-          <div className="flex items-center gap-1.5 font-label text-[9px] uppercase tracking-widest text-primary shrink-0">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />En vivo
+        {profiles.length>0&&(
+          <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-[#4dabf7]">
+            <div className="w-2 h-2 bg-[#4dabf7] animate-pulse"/>EN VIVO
           </div>
         )}
       </div>
 
-      {/* Isometric room */}
-      <div className="relative w-full overflow-hidden rounded-2xl" style={{ background: '#0c1018', minHeight: 340 }}>
-        <svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg"
-          className="w-full h-auto block" style={{ maxHeight: 480 }}>
-          <defs>
-            <linearGradient id="lgFloor" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#1e2738" />
-              <stop offset="100%" stopColor="#131a26" />
-            </linearGradient>
-            <linearGradient id="lgLeft" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#3a4f68" />
-              <stop offset="100%" stopColor="#4a6080" />
-            </linearGradient>
-            <linearGradient id="lgRight" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#2e4258" />
-              <stop offset="100%" stopColor="#3a5268" />
-            </linearGradient>
-            <linearGradient id="lgCeil" x1="0" y1="1" x2="0" y2="0">
-              <stop offset="0%" stopColor="#252f40" />
-              <stop offset="100%" stopColor="#1a2230" />
-            </linearGradient>
-            <filter id="fGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" result="b" />
-              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-            <filter id="fShadow">
-              <feDropShadow dx="0" dy="3" stdDeviation="3" floodOpacity="0.5" />
-            </filter>
-          </defs>
+      {/* Room */}
+      <div className="relative w-full overflow-hidden" style={{background:'#05080e', borderRadius:0, border:'2px solid #1a2030', boxShadow:'4px 4px 0 #0d1220', minHeight:360}}>
+        <svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg"
+          shapeRendering="crispEdges" className="w-full h-auto block" style={{maxHeight:480,imageRendering:'pixelated'}}>
 
-          {/* ── FLOOR ───────────────────────────────────────── */}
-          <polygon points={P([0,0],[7,0],[7,7],[0,7])} fill="url(#lgFloor)" />
-
-          {/* floor grid – left-direction lines (const r) */}
-          {[0,1,2,3,4,5,6,7].map(r => (
-            <line key={`fl${r}`} x1={bx(0,r)} y1={by(0,r)} x2={bx(7,r)} y2={by(7,r)}
-              stroke="#263040" strokeWidth="0.8" />
+          {/* ── FLOOR ──────────────────────────────────────────────────────── */}
+          <polygon points={P([0,0],[L,0],[L,R],[0,R])} fill={C.floor} stroke={C.outline} strokeWidth="1"/>
+          {/* Rubber tile grid */}
+          {[0,2,4,6,8,10].map(r=>(
+            <line key={`fl${r}`} x1={bx(0,r)} y1={by(0,r)} x2={bx(L,r)} y2={by(L,r)} stroke={C.floorAlt} strokeWidth="1"/>
           ))}
-          {/* floor grid – right-direction lines (const l) */}
-          {[0,1,2,3,4,5,6,7].map(l => (
-            <line key={`fr${l}`} x1={bx(l,0)} y1={by(l,0)} x2={bx(l,7)} y2={by(l,7)}
-              stroke="#263040" strokeWidth="0.8" />
+          {[0,2,4,6,8,10].map(l=>(
+            <line key={`fr${l}`} x1={bx(l,0)} y1={by(l,0)} x2={bx(l,R)} y2={by(l,R)} stroke={C.floorAlt} strokeWidth="1"/>
           ))}
+          {/* Center mat highlight */}
+          <polygon points={P([1,1],[6,1],[6,9],[1,9])} fill={C.rubber} stroke={C.floorAlt} strokeWidth="0.5" opacity="0.5"/>
 
-          {/* ── LEFT WALL ────────────────────────────────────── */}
-          <polygon points={P([0,0],[7,0],[7,0,4],[0,0,4])} fill="url(#lgLeft)" />
-
-          {/* left wall horizontal mortar lines */}
-          {[1,2,3,4].map(z => (
-            <line key={`lh${z}`} x1={bx(0,0)} y1={by(0,0,z)} x2={bx(7,0)} y2={by(7,0,z)}
-              stroke="#2d3f58" strokeWidth="0.8" />
+          {/* ── LEFT WALL (r=0 face) ───────────────────────────────────────── */}
+          <polygon points={`${nearX},${nearY} ${leftX},${leftY} ${leftX},${leftTopY} ${nearX},${nearTopY}`}
+            fill={C.wallL} stroke={C.outline} strokeWidth="1"/>
+          {/* Horizontal brick mortar lines */}
+          {[1,2,3,4,5].map(z=>(
+            <line key={`lz${z}`} x1={bx(0,0)} y1={by(0,0,z)} x2={bx(L,0)} y2={by(L,0,z)} stroke={C.mortar} strokeWidth="2"/>
           ))}
-          {/* left wall vertical lines (every 2 l-units) */}
-          {[0,1,2,3,4,5,6,7].map(l => (
-            <line key={`lv${l}`} x1={bx(l,0)} y1={by(l,0,0)} x2={bx(l,0)} y2={by(l,0,4)}
-              stroke="#2d3f58" strokeWidth="0.6" />
+          {/* Vertical brick joints (staggered) */}
+          {[0,1,2,3,4].map(z=>
+            [2,4,6,8].map(l=>(
+              <line key={`lbv${z}${l}`}
+                x1={bx(l+(z%2),0)} y1={by(l+(z%2),0,z)}
+                x2={bx(l+(z%2),0)} y2={by(l+(z%2),0,z+1)}
+                stroke={C.mortar} strokeWidth="1.5"/>
+            ))
+          )}
+          {/* Left wall highlight strip at top */}
+          <polygon points={`${bx(0,0)},${by(0,0,4.8)} ${bx(L,0)},${by(L,0,4.8)} ${bx(L,0)},${by(L,0,WH)} ${bx(0,0)},${by(0,0,WH)}`}
+            fill={C.wallLhi} opacity="0.5"/>
+
+          {/* Mirror panels on left wall */}
+          {[
+            [0.5,2.5,0.8,4.0],
+            [3.2,5.2,0.8,4.0],
+            [6.0,8.5,0.8,4.0],
+          ].map(([l1,l2,z1,z2],mi)=>(
+            <g key={mi}>
+              <polygon
+                points={`${bx(l1,0)},${by(l1,0,z1)} ${bx(l2,0)},${by(l2,0,z1)} ${bx(l2,0)},${by(l2,0,z2)} ${bx(l1,0)},${by(l1,0,z2)}`}
+                fill="#3a5a7a" stroke="#5a8ab0" strokeWidth="1.5"/>
+              {/* Mirror reflection shimmer */}
+              <polygon
+                points={`${bx(l1,0)},${by(l1,0,z1)} ${bx(l1+0.4,0)},${by(l1+0.4,0,z1)} ${bx(l1+0.4,0)},${by(l1+0.4,0,z2)} ${bx(l1,0)},${by(l1,0,z2)}`}
+                fill="white" opacity="0.08"/>
+            </g>
           ))}
 
-          {/* Mirror panels on left wall (surface at r=0, varying l and z) */}
-          {/* Mirror 1 */}
-          <polygon points={`${bx(0.5,0)},${by(0.5,0,0.7)} ${bx(2.5,0)},${by(2.5,0,0.7)} ${bx(2.5,0)},${by(2.5,0,3.5)} ${bx(0.5,0)},${by(0.5,0,3.5)}`}
-            fill="#5a7a9a" opacity="0.7" stroke="#7aa0c0" strokeWidth="1.5" />
-          <polygon points={`${bx(0.6,0)},${by(0.6,0,0.8)} ${bx(0.9,0)},${by(0.9,0,0.8)} ${bx(0.9,0)},${by(0.9,0,3.4)} ${bx(0.6,0)},${by(0.6,0,3.4)}`}
-            fill="white" opacity="0.08" />
-          {/* Mirror 2 */}
-          <polygon points={`${bx(3,0)},${by(3,0,0.7)} ${bx(5,0)},${by(5,0,0.7)} ${bx(5,0)},${by(5,0,3.5)} ${bx(3,0)},${by(3,0,3.5)}`}
-            fill="#5a7a9a" opacity="0.7" stroke="#7aa0c0" strokeWidth="1.5" />
-          <polygon points={`${bx(3.1,0)},${by(3.1,0,0.8)} ${bx(3.4,0)},${by(3.4,0,0.8)} ${bx(3.4,0)},${by(3.4,0,3.4)} ${bx(3.1,0)},${by(3.1,0,3.4)}`}
-            fill="white" opacity="0.08" />
-          {/* Mirror 3 */}
-          <polygon points={`${bx(5.5,0)},${by(5.5,0,0.7)} ${bx(6.8,0)},${by(6.8,0,0.7)} ${bx(6.8,0)},${by(6.8,0,3.5)} ${bx(5.5,0)},${by(5.5,0,3.5)}`}
-            fill="#5a7a9a" opacity="0.7" stroke="#7aa0c0" strokeWidth="1.5" />
-
-          {/* ── RIGHT WALL ───────────────────────────────────── */}
-          <polygon points={P([0,0],[0,7],[0,7,4],[0,0,4])} fill="url(#lgRight)" />
-
-          {/* right wall grid */}
-          {[1,2,3,4].map(z => (
-            <line key={`rh${z}`} x1={bx(0,0)} y1={by(0,0,z)} x2={bx(0,7)} y2={by(0,7,z)}
-              stroke="#243650" strokeWidth="0.8" />
+          {/* ── RIGHT WALL (l=0 face) ──────────────────────────────────────── */}
+          <polygon points={`${nearX},${nearY} ${rightX},${rightY} ${rightX},${rightTopY} ${nearX},${nearTopY}`}
+            fill={C.wallR} stroke={C.outline} strokeWidth="1"/>
+          {[1,2,3,4,5].map(z=>(
+            <line key={`rz${z}`} x1={bx(0,0)} y1={by(0,0,z)} x2={bx(0,R)} y2={by(0,R,z)} stroke={C.mortar} strokeWidth="2"/>
           ))}
-          {[0,1,2,3,4,5,6,7].map(r => (
-            <line key={`rv${r}`} x1={bx(0,r)} y1={by(0,r,0)} x2={bx(0,r)} y2={by(0,r,4)}
-              stroke="#243650" strokeWidth="0.6" />
+          {[0,1,2,3,4].map(z=>
+            [2,4,6,8].map(r=>(
+              <line key={`rbv${z}${r}`}
+                x1={bx(0,r+(z%2))} y1={by(0,r+(z%2),z)}
+                x2={bx(0,r+(z%2))} y2={by(0,r+(z%2),z+1)}
+                stroke={C.mortar} strokeWidth="1.5"/>
+            ))
+          )}
+          {/* Dumbbell rack on right wall */}
+          {[1,2,3].map(bar=>(
+            <line key={`db${bar}`}
+              x1={bx(0,1)} y1={by(0,1,bar*1.1)}
+              x2={bx(0,9)} y2={by(0,9,bar*1.1)}
+              stroke={C.metalL} strokeWidth="3"/>
           ))}
-
-          {/* Dumbbell rack silhouette on right wall */}
-          {/* Horizontal bars */}
-          {[1.2, 2.0, 2.8].map((z, i) => (
-            <line key={`dbar${i}`}
-              x1={bx(0,1)} y1={by(0,1,z)} x2={bx(0,6)} y2={by(0,6,z)}
-              stroke="#8090a8" strokeWidth="2.5" />
-          ))}
-          {/* Dumbbell circles (pairs) */}
-          {[1.5, 2.5, 3.5, 4.5, 5.5].map((r, ri) => (
-            [1.2, 2.0, 2.8].map((z, zi) => {
-              const cx = bx(0, r);
-              const cy = by(0, r, z);
-              const colors = ['#c0392b','#e67e22','#27ae60','#2980b9','#8e44ad'];
-              return (
-                <g key={`d${ri}${zi}`}>
-                  <ellipse cx={cx} cy={cy} rx={6} ry={4} fill={colors[ri]} opacity={0.85} />
-                  <ellipse cx={cx} cy={cy} rx={3} ry={2} fill={colors[ri]} opacity={0.5} />
+          {/* Dumbbells on rack */}
+          {[1.5,2.5,3.5,4.5,5.5,6.5,7.5,8.5].map((r,ri)=>{
+            const colors=['#c0392b','#c0392b','#e67e22','#e67e22','#2980b9','#2980b9','#27ae60','#8e44ad'];
+            return [1.1,2.2,3.3].map((z,zi)=>{
+              const cx=bx(0,r), cy=by(0,r,z);
+              return(
+                <g key={`${ri}${zi}`}>
+                  <ellipse cx={cx} cy={cy} rx={7} ry={4} fill={colors[ri]} stroke={C.outline} strokeWidth="0.5"/>
+                  <ellipse cx={cx} cy={cy} rx={3} ry={2} fill="white" opacity={0.15}/>
                 </g>
               );
-            })
-          ))}
+            });
+          })}
 
-          {/* ── CEILING EDGE ─────────────────────────────────── */}
-          <polygon points={P([0,0,4],[7,0,4],[7,7,4],[0,7,4])} fill="url(#lgCeil)" opacity="0.6" />
-          {/* Ceiling edge lines */}
-          <line x1={bx(0,0)} y1={by(0,0,4)} x2={bx(7,0)} y2={by(7,0,4)} stroke="#5a7090" strokeWidth="1.5" />
-          <line x1={bx(0,0)} y1={by(0,0,4)} x2={bx(0,7)} y2={by(0,7,4)} stroke="#4a6080" strokeWidth="1.5" />
-
+          {/* ── CEILING EDGE ───────────────────────────────────────────────── */}
+          <line x1={bx(0,0)} y1={by(0,0,WH)} x2={bx(L,0)} y2={by(L,0,WH)} stroke={C.wallLhi} strokeWidth="2"/>
+          <line x1={bx(0,0)} y1={by(0,0,WH)} x2={bx(0,R)} y2={by(0,R,WH)} stroke={C.wallRhi} strokeWidth="2"/>
           {/* Neon light strip on ceiling */}
-          <line x1={bx(1,1)} y1={by(1,1,3.95)} x2={bx(1,6)} y2={by(1,6,3.95)}
-            stroke="#4dabf7" strokeWidth="3" opacity="0.5" filter="url(#fGlow)" />
-          <line x1={bx(6,1)} y1={by(6,1,3.95)} x2={bx(6,6)} y2={by(6,6,3.95)}
-            stroke="#4dabf7" strokeWidth="3" opacity="0.5" filter="url(#fGlow)" />
+          <line x1={bx(1,1)} y1={by(1,1,4.9)} x2={bx(1,9)} y2={by(1,9,4.9)} stroke={C.neon} strokeWidth="3" opacity="0.7"/>
+          <line x1={bx(9,1)} y1={by(9,1,4.9)} x2={bx(9,9)} y2={by(9,9,4.9)} stroke={C.neon} strokeWidth="3" opacity="0.7"/>
 
-          {/* GYM neon sign on ceiling */}
-          <text x={bx(4,4)} y={by(4,4,3.8)} textAnchor="middle"
-            fontSize="18" fontWeight="bold" fontFamily="monospace" letterSpacing="6"
-            fill="#4dabf7" opacity="0.9" filter="url(#fGlow)">
+          {/* LED scoreboard sign */}
+          <polygon
+            points={`${bx(3,3,0)},${by(3,3,4.5)} ${bx(7,3,0)},${by(7,3,4.5)} ${bx(7,7,0)},${by(7,7,4.5)} ${bx(3,7,0)},${by(3,7,4.5)}`}
+            fill={C.neonD} stroke={C.neon} strokeWidth="1.5"/>
+          <text
+            x={bx(5,5)} y={by(5,5,4.5)+4}
+            textAnchor="middle" fontSize="11" fontWeight="bold"
+            fontFamily="monospace" letterSpacing="3"
+            fill={C.neon} style={{textShadow:'0 0 6px #4dabf7'}}>
             GYM
           </text>
 
-          {/* ── EQUIPMENT (back → front) ─────────────────────── */}
+          {/* Clock on right wall */}
+          <ellipse cx={bx(0,8)} cy={by(0,8,3.5)} rx={14} ry={8} fill="#1a1a2a" stroke={C.metalL} strokeWidth="1.5"/>
+          <ellipse cx={bx(0,8)} cy={by(0,8,3.5)} rx={10} ry={5} fill="#0d1020"/>
+          <line x1={bx(0,8)} y1={by(0,8,3.5)} x2={bx(0,8)} y2={by(0,8,3.5)-4} stroke={C.neon} strokeWidth="1"/>
+          <line x1={bx(0,8)} y1={by(0,8,3.5)} x2={bx(0,8)+3} y2={by(0,8,3.5)} stroke={C.metalHi} strokeWidth="1"/>
 
-          {/* Squat rack frame  l=5-7, r=4-6, h=3.8 */}
-          {/* Back posts */}
-          <IsoBox l={6.7} r={4.1} lw={0.25} rw={0.25} h={3.8} top="#7a8a9a" left="#5a6a7a" right="#4a5a6a" />
-          <IsoBox l={6.7} r={5.7} lw={0.25} rw={0.25} h={3.8} top="#7a8a9a" left="#5a6a7a" right="#4a5a6a" />
-          {/* Front posts */}
-          <IsoBox l={5.1} r={4.1} lw={0.25} rw={0.25} h={3.8} top="#7a8a9a" left="#5a6a7a" right="#4a5a6a" />
-          <IsoBox l={5.1} r={5.7} lw={0.25} rw={0.25} h={3.8} top="#7a8a9a" left="#5a6a7a" right="#4a5a6a" />
-          {/* Top crossbars */}
-          <IsoBox l={5.1} r={4.1} lw={1.85} rw={0.15} h={3.95} top="#8a9aaa" left="#6a7a8a" right="#5a6a7a" />
-          <IsoBox l={5.1} r={5.7} lw={1.85} rw={0.15} h={3.95} top="#8a9aaa" left="#6a7a8a" right="#5a6a7a" />
+          {/* ── EQUIPMENT (back→front) ─────────────────────────────────────── */}
+
+          {/* === SQUAT RACK L (l=8-10, r=2-4) === */}
+          {/* Posts */}
+          <Box l={9.6} r={2.2} lw={0.3} rw={0.3} h={4.5} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={9.6} r={3.6} lw={0.3} rw={0.3} h={4.5} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={8.2} r={2.2} lw={0.3} rw={0.3} h={4.5} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={8.2} r={3.6} lw={0.3} rw={0.3} h={4.5} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          {/* Top crossbar */}
+          <Box l={8.2} r={2.2} lw={1.7} rw={0.15} h={4.6} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
+          <Box l={8.2} r={3.6} lw={1.7} rw={0.15} h={4.6} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
+          {/* Safety bar */}
+          <Box l={8.2} r={2.2} lw={1.7} rw={0.15} h={2.5} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
           {/* Barbell */}
-          <IsoBox l={5.5} r={3.8} lw={1.0} rw={2.4} h={2.5} top="#aabbcc" left="#8090a0" right="#607080" />
-          {/* Weight plates on barbell */}
-          <IsoBox l={5.5} r={3.8} lw={0.12} rw={0.5} h={2.9} top="#c0392b" left="#922b21" right="#6e1f18" />
-          <IsoBox l={6.3} r={3.8} lw={0.12} rw={0.5} h={2.9} top="#c0392b" left="#922b21" right="#6e1f18" />
-          <IsoBox l={5.5} r={5.7} lw={0.12} rw={0.5} h={2.9} top="#c0392b" left="#922b21" right="#6e1f18" />
-          <IsoBox l={6.3} r={5.7} lw={0.12} rw={0.5} h={2.9} top="#c0392b" left="#922b21" right="#6e1f18" />
+          <Box l={8.4} r={1.8} lw={1.3} rw={2.2} h={3.0} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          {/* Red plates */}
+          <Box l={8.4} r={1.8} lw={0.15} rw={0.6} h={3.45} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={9.5} r={1.8} lw={0.15} rw={0.6} h={3.45} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={8.4} r={3.4} lw={0.15} rw={0.6} h={3.45} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={9.5} r={3.4} lw={0.15} rw={0.6} h={3.45} top={C.plateL} lf={C.plate} rf={C.plateD}/>
 
-          {/* Dumbbell rack against left wall: l=6-7, r=0.5-5, h=1.5 */}
-          <IsoBox l={6} r={0.5} lw={1} rw={4.5} h={1.5} top="#8090a0" left="#607080" right="#506070" />
-          {/* Dumbbell shapes on rack top */}
-          {[0.8, 1.6, 2.4, 3.2, 4.0].map((r, i) => {
-            const colors = ['#c0392b','#e67e22','#27ae60','#2980b9','#8e44ad'];
-            return (
-              <g key={`rack${i}`}>
-                <ellipse cx={bx(6.5, r)} cy={by(6.5, r, 1.6)} rx={10} ry={5} fill={colors[i]} opacity={0.9} />
-                <ellipse cx={bx(6.5, r)} cy={by(6.5, r, 1.6)} rx={4}  ry={2} fill={colors[i]} opacity={0.5} />
+          {/* === SQUAT RACK R (l=8-10, r=6-8) === */}
+          <Box l={9.6} r={6.2} lw={0.3} rw={0.3} h={4.5} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={9.6} r={7.6} lw={0.3} rw={0.3} h={4.5} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={8.2} r={6.2} lw={0.3} rw={0.3} h={4.5} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={8.2} r={7.6} lw={0.3} rw={0.3} h={4.5} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={8.2} r={6.2} lw={1.7} rw={0.15} h={4.6} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
+          <Box l={8.2} r={7.6} lw={1.7} rw={0.15} h={4.6} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
+          <Box l={8.4} r={5.8} lw={1.3} rw={2.2} h={3.0} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={8.4} r={5.8} lw={0.15} rw={0.6} h={3.45} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={9.5} r={5.8} lw={0.15} rw={0.6} h={3.45} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={8.4} r={7.4} lw={0.15} rw={0.6} h={3.45} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={9.5} r={7.4} lw={0.15} rw={0.6} h={3.45} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+
+          {/* === BENCH PRESS CENTER (l=6-8, r=4-6) === */}
+          <Box l={6.0} r={4.2} lw={2.0} rw={1.6} h={0.9} top={C.bench} lf={C.benchL} rf={C.metalD}/>
+          <Box l={6.1} r={4.3} lw={1.8} rw={1.4} h={1.0} top="#223" lf="#1a2" rf="#131"/>
+          {/* Barbell on bench */}
+          <Box l={6.3} r={3.8} lw={1.4} rw={2.4} h={1.6} top={C.metalHi} lf={C.metal} rf={C.metalD}/>
+          <Box l={6.3} r={3.8} lw={0.12} rw={0.5} h={2.0} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={7.6} r={3.8} lw={0.12} rw={0.5} h={2.0} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={6.3} r={5.7} lw={0.12} rw={0.5} h={2.0} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          <Box l={7.6} r={5.7} lw={0.12} rw={0.5} h={2.0} top={C.plateL} lf={C.plate} rf={C.plateD}/>
+          {/* Bench posts */}
+          <Box l={6.2} r={4.3} lw={0.2} rw={0.2} h={1.9} top={C.metalL} lf={C.metal} rf={C.metalD}/>
+          <Box l={7.6} r={4.3} lw={0.2} rw={0.2} h={1.9} top={C.metalL} lf={C.metal} rf={C.metalD}/>
+
+          {/* === CABLE MACHINE (l=7-9, r=1-3) === */}
+          <Box l={7.5} r={1.0} lw={1.5} rw={2.0} h={3.5} top={C.metalL} lf={C.metal} rf={C.metalD}/>
+          {/* Screen */}
+          <polygon
+            points={`${bx(7.6,1)},${by(7.6,1,2.5)} ${bx(8.8,1)},${by(8.8,1,2.5)} ${bx(8.8,1)},${by(8.8,1,3.2)} ${bx(7.6,1)},${by(7.6,1,3.2)}`}
+            fill={C.neonD} stroke={C.neon} strokeWidth="1"/>
+          <line x1={bx(7.8,1)} y1={by(7.8,1,2.7)} x2={bx(8.6,1)} y2={by(8.6,1,2.7)} stroke={C.neon} strokeWidth="1" opacity="0.6"/>
+          <line x1={bx(7.8,1)} y1={by(7.8,1,2.9)} x2={bx(8.3,1)} y2={by(8.3,1,2.9)} stroke={C.neon} strokeWidth="1" opacity="0.4"/>
+          {/* Cable pulley */}
+          <ellipse cx={bx(8.2,2)} cy={by(8.2,2,3.6)} rx={8} ry={4} fill={C.metalHi} stroke={C.outline} strokeWidth="0.5"/>
+
+          {/* === DUMBBELL RACK on floor (l=9-10, r=0.5-9) === */}
+          <Box l={9.0} r={0.5} lw={1.0} rw={8.5} h={1.4} top={C.metal} lf={C.metalD} rf={C.metalD}/>
+          {[1,2,3,4,5,6,7,8].map((ri,i)=>{
+            const colors=[C.plateD,C.plate,C.plateL,'#c0392b','#c0392b','#e67e22','#2980b9','#27ae60'];
+            return(
+              <g key={ri}>
+                <ellipse cx={bx(9.5,ri)} cy={by(9.5,ri,1.5)} rx={9} ry={5} fill={colors[i]} stroke={C.outline} strokeWidth="0.5"/>
+                <ellipse cx={bx(9.5,ri)} cy={by(9.5,ri,1.5)} rx={4} ry={2} fill="white" opacity={0.12}/>
               </g>
             );
           })}
 
-          {/* Cable machine: l=4.5-6, r=1-3, h=3 */}
-          <IsoBox l={4.5} r={1} lw={1.5} rw={2} h={3} top="#6a7a8a" left="#4a5a6a" right="#3a4a5a" />
-          {/* Cable machine screen */}
+          {/* === TREADMILL (l=1-3, r=7-9) === */}
+          <Box l={1.0} r={7.0} lw={2.0} rw={2.0} h={1.4} top={C.metal} lf={C.metalD} rf={C.metalD}/>
+          {/* Belt */}
+          <polygon points={P([1.1,7.1,1.41],[2.9,7.1,1.41],[2.9,8.9,1.41],[1.1,8.9,1.41])} fill="#0d0d18" stroke={C.floorAlt} strokeWidth="0.5"/>
+          {/* Handlebars */}
+          <Box l={1.2} r={7.0} lw={0.15} rw={0.1} h={3.0} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
+          <Box l={2.7} r={7.0} lw={0.15} rw={0.1} h={3.0} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
+          <Box l={1.2} r={7.0} lw={1.65} rw={0.1} h={2.95} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
+          {/* Screen */}
           <polygon
-            points={`${bx(4.6,1)},${by(4.6,1,2.2)} ${bx(5.7,1)},${by(5.7,1,2.2)} ${bx(5.7,1)},${by(5.7,1,2.8)} ${bx(4.6,1)},${by(4.6,1,2.8)}`}
-            fill="#1a3a5c" stroke="#4dabf7" strokeWidth="0.8" />
-          <polygon
-            points={`${bx(4.65,1)},${by(4.65,1,2.3)} ${bx(5.65,1)},${by(5.65,1,2.3)} ${bx(5.65,1)},${by(5.65,1,2.75)} ${bx(4.65,1)},${by(4.65,1,2.75)}`}
-            fill="#0d2040" opacity="0.8" />
-          <line x1={bx(4.9,1)} y1={by(4.9,1,2.45)} x2={bx(5.4,1)} y2={by(5.4,1,2.45)}
-            stroke="#4dabf7" strokeWidth="1" opacity="0.6" />
-          <line x1={bx(4.9,1)} y1={by(4.9,1,2.6)} x2={bx(5.2,1)} y2={by(5.2,1,2.6)}
-            stroke="#4dabf7" strokeWidth="1" opacity="0.4" />
+            points={`${bx(1.6,7)},${by(1.6,7,2.7)} ${bx(2.4,7)},${by(2.4,7,2.7)} ${bx(2.4,7)},${by(2.4,7,2.95)} ${bx(1.6,7)},${by(1.6,7,2.95)}`}
+            fill={C.neonD} stroke={C.neon} strokeWidth="1"/>
 
-          {/* Weight stack on cable machine */}
-          {[0,1,2,3,4,5].map(i => (
-            <IsoBox key={i} l={4.7+i*0.001} r={2.8} lw={0.4} rw={0.15} h={0.2+i*0.32}
-              top="#8090a0" left="#607080" right="#506070" />
+          {/* Second treadmill */}
+          <Box l={1.0} r={4.5} lw={2.0} rw={2.0} h={1.4} top={C.metal} lf={C.metalD} rf={C.metalD}/>
+          <polygon points={P([1.1,4.6,1.41],[2.9,4.6,1.41],[2.9,6.4,1.41],[1.1,6.4,1.41])} fill="#0d0d18" stroke={C.floorAlt} strokeWidth="0.5"/>
+          <Box l={1.2} r={4.5} lw={0.15} rw={0.1} h={3.0} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
+          <Box l={2.7} r={4.5} lw={0.15} rw={0.1} h={3.0} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
+          <Box l={1.2} r={4.5} lw={1.65} rw={0.1} h={2.95} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
+          <polygon
+            points={`${bx(1.6,4.5)},${by(1.6,4.5,2.7)} ${bx(2.4,4.5)},${by(2.4,4.5,2.7)} ${bx(2.4,4.5)},${by(2.4,4.5,2.95)} ${bx(1.6,4.5)},${by(1.6,4.5,2.95)}`}
+            fill={C.neonD} stroke={C.neon} strokeWidth="1"/>
+
+          {/* Water cooler */}
+          <Box l={9.2} r={9.0} lw={0.6} rw={0.8} h={2.2} top="#90d0f0" lf="#4ab0e0" rf="#2090c0"/>
+          <Box l={9.3} r={9.1} lw={0.4} rw={0.6} h={2.8} top="#c0e8ff" lf="#90d0f0" rf="#60b8e0"/>
+
+          {/* Weight plates on floor */}
+          {[[8.0,3.5],[7.5,5.0],[7.0,3.0]].map(([l,r],i)=>(
+            <g key={i}>
+              <ellipse cx={bx(l,r)} cy={by(l,r,0.1)} rx={14} ry={7} fill={i===0?C.plate:C.plateD} stroke={C.outline} strokeWidth="0.5"/>
+              <ellipse cx={bx(l,r)} cy={by(l,r,0.1)} rx={5}  ry={2.5} fill={C.outline} opacity={0.5}/>
+            </g>
           ))}
 
-          {/* Bench press: l=3-4.5, r=3-5, h=0.8 */}
-          {/* Bench legs */}
-          <IsoBox l={3.1} r={3.1} lw={0.2} rw={0.2} h={0.7} top="#505a6a" left="#404858" right="#303848" />
-          <IsoBox l={4.2} r={3.1} lw={0.2} rw={0.2} h={0.7} top="#505a6a" left="#404858" right="#303848" />
-          <IsoBox l={3.1} r={4.7} lw={0.2} rw={0.2} h={0.7} top="#505a6a" left="#404858" right="#303848" />
-          <IsoBox l={4.2} r={4.7} lw={0.2} rw={0.2} h={0.7} top="#505a6a" left="#404858" right="#303848" />
-          {/* Bench pad */}
-          <IsoBox l={3} r={3} lw={1.5} rw={2} h={0.85} top="#1a3060" left="#122248" right="#0e1a38" />
-          {/* Bench pad highlight */}
-          <polygon
-            points={P([3,3,0.85],[3.5,3,0.85],[3.5,5,0.85],[3,5,0.85])}
-            fill="white" opacity="0.05" />
-          {/* Barbell stand */}
-          <IsoBox l={3.5} r={3} lw={0.15} rw={0.1} h={1.5} top="#8090a0" left="#607080" right="#506070" />
-          <IsoBox l={4.0} r={3} lw={0.15} rw={0.1} h={1.5} top="#8090a0" left="#607080" right="#506070" />
-          {/* Barbell */}
-          <IsoBox l={3.4} r={2.8} lw={1.2} rw={2.4} h={1.6} top="#b0c0d0" left="#8090a0" right="#607080" />
-          {/* Weight plates */}
-          <IsoBox l={3.4} r={2.8} lw={0.1} rw={0.4} h={1.85} top="#e67e22" left="#ca6f1e" right="#9a5319" />
-          <IsoBox l={4.5} r={2.8} lw={0.1} rw={0.4} h={1.85} top="#e67e22" left="#ca6f1e" right="#9a5319" />
-          <IsoBox l={3.4} r={4.8} lw={0.1} rw={0.4} h={1.85} top="#e67e22" left="#ca6f1e" right="#9a5319" />
-          <IsoBox l={4.5} r={4.8} lw={0.1} rw={0.4} h={1.85} top="#e67e22" left="#ca6f1e" right="#9a5319" />
-
-          {/* Treadmill: l=0.5-2, r=5-7, h=1.2 */}
-          <IsoBox l={0.5} r={5} lw={1.5} rw={2} h={1.3} top="#404a5a" left="#303848" right="#202838" />
-          {/* Treadmill belt */}
-          <polygon points={P([0.6,5.1,1.31],[1.9,5.1,1.31],[1.9,6.9,1.31],[0.6,6.9,1.31])}
-            fill="#1a2030" stroke="#303848" strokeWidth="0.5" />
-          {/* Treadmill handlebar */}
-          <IsoBox l={0.6} r={5} lw={0.15} rw={0.1} h={2.4} top="#8090a0" left="#607080" right="#506070" />
-          <IsoBox l={1.8} r={5} lw={0.15} rw={0.1} h={2.4} top="#8090a0" left="#607080" right="#506070" />
-          <IsoBox l={0.6} r={5} lw={1.35} rw={0.1} h={2.4} top="#8090a0" left="#607080" right="#506070" />
-          {/* Screen */}
-          <polygon points={`${bx(0.9,5)},${by(0.9,5,2.2)} ${bx(1.6,5)},${by(1.6,5,2.2)} ${bx(1.6,5)},${by(1.6,5,2.35)} ${bx(0.9,5)},${by(0.9,5,2.35)}`}
-            fill="#1a3a5c" stroke="#4dabf7" strokeWidth="0.8" />
-
-          {/* Water cooler: l=6.5-7, r=6-7, h=2 */}
-          <IsoBox l={6.5} r={6} lw={0.5} rw={1} h={2} top="#29b6f6" left="#0288d1" right="#0277bd" />
-          {/* Water bottle on top */}
-          <IsoBox l={6.65} r={6.25} lw={0.2} rw={0.5} h={2.7} top="#4fc3f7" left="#29b6f6" right="#0288d1" />
-
-          {/* Rubber floor mat in center */}
-          <polygon points={P([1,1],[5,1],[5,5],[1,5])} fill="#1a2234" opacity="0.6"
-            stroke="#252f42" strokeWidth="0.8" />
-          {/* Mat logo */}
-          <text x={bx(3,3)} y={by(3,3)} textAnchor="middle" fontSize="9"
-            fontFamily="monospace" fill="#2a3850" letterSpacing="3">· · ·</text>
-
-          {/* ── AVATARS (sorted back→front) ──────────────────── */}
-          {!loading && sortedAvatars.map(({ profile, slot }, idx) => {
-            const [sl, sr] = slot;
-            const ax = bx(sl, sr);
-            const ay = by(sl, sr, 0);
-            const cfg: AvatarConfig = { ...DEFAULT_AVATAR, ...profile.avatarConfig };
-            const isAnon = profile.socialVisibility === 'anonymous';
-            const isSelected = selected?.id === profile.id;
-
-            // Avatar shadow
-            return (
+          {/* ── AVATARS ─────────────────────────────────────────────────────── */}
+          {!loading&&sorted.map(({profile,slot})=>{
+            const [sl,sr]=slot;
+            const ax=bx(sl,sr), ay=by(sl,sr,0);
+            const cfg:AvatarConfig={...DEFAULT_AVATAR,...profile.avatarConfig};
+            const isAnon=profile.socialVisibility==='anonymous';
+            const isSel=selected?.id===profile.id;
+            const avatarH=Math.round(48*2.0625);
+            return(
               <g key={profile.id}>
-                <ellipse cx={ax} cy={ay} rx={16} ry={6} fill="black" opacity={0.35} />
-                <foreignObject
-                  x={ax - 30} y={ay - 82}
-                  width={60} height={90}
-                  style={{ overflow: 'visible', cursor: 'pointer' }}
-                  onClick={() => setSelected(isSelected ? null : profile)}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    {/* Name tag */}
+                {/* Shadow */}
+                <ellipse cx={ax} cy={ay+2} rx={18} ry={7} fill="black" opacity={0.45}/>
+                <foreignObject x={ax-32} y={ay-avatarH-18} width={64} height={avatarH+22}
+                  style={{overflow:'visible',cursor:'pointer'}}
+                  onClick={()=>setSelected(isSel?null:profile)}>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
+                    {/* Pixel name tag */}
                     <div style={{
-                      background: isSelected ? '#4dabf7' : 'rgba(0,0,0,0.72)',
-                      color: isSelected ? '#000' : '#fff',
-                      padding: '1px 7px',
-                      borderRadius: 99,
-                      fontSize: 9,
-                      fontWeight: 900,
-                      fontFamily: 'monospace',
-                      letterSpacing: 1,
-                      textTransform: 'uppercase',
-                      whiteSpace: 'nowrap',
-                      marginBottom: 3,
-                      boxShadow: isSelected ? '0 0 8px #4dabf7' : undefined,
+                      background: isSel?C.neon:'#0d1117cc',
+                      color: isSel?'#0d1117':'#e0e0e0',
+                      border:`1px solid ${isSel?C.neon:'#4dabf740'}`,
+                      padding:'1px 6px',
+                      fontFamily:'monospace',
+                      fontSize:8,
+                      fontWeight:'bold',
+                      letterSpacing:1,
+                      textTransform:'uppercase',
+                      whiteSpace:'nowrap',
+                      marginBottom:3,
+                      boxShadow: isSel?`2px 2px 0 ${C.neonD}`:undefined,
                     }}>
-                      {isAnon ? '???' : profile.displayName.split(' ')[0]}
+                      {isAnon?'???':profile.displayName.split(' ')[0]}
                     </div>
-                    <AvatarSprite config={cfg} size={44} isAnonymous={isAnon} isSelected={isSelected} />
+                    <AvatarSprite config={cfg} size={48} isAnonymous={isAnon} isSelected={isSel}/>
                   </div>
                 </foreignObject>
               </g>
@@ -393,46 +396,42 @@ export default function GymWorld() {
           })}
         </svg>
 
-        {/* Empty state */}
-        {isEmpty && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-[1px]">
-            <span className="material-symbols-outlined text-5xl text-primary/30">groups</span>
-            <p className="font-headline font-black text-lg uppercase tracking-tight text-on-surface/40">Nadie entrenando visible</p>
-            <p className="font-label text-[10px] uppercase tracking-widest text-tertiary/50 max-w-[220px] text-center">
-              Los socios con visibilidad activada aparecerán aquí cuando estén en el gym.
-            </p>
+        {isEmpty&&(
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/50">
+            <div style={{fontFamily:'monospace',textAlign:'center'}}>
+              <p className="text-[10px] uppercase tracking-[0.3em] text-[#4dabf7] mb-2">▶ SALA VACÍA</p>
+              <p className="text-xs text-[#4a5a70]">Activá tu visibilidad en tu perfil</p>
+              <p className="text-xs text-[#4a5a70]">para aparecer aquí mientras entrenás.</p>
+            </div>
           </div>
         )}
-
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        {loading&&(
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+            <div className="w-6 h-6 border-2 border-[#4dabf730] border-t-[#4dabf7] rounded-full animate-spin"/>
           </div>
         )}
       </div>
 
-      {/* Member chips */}
-      {profiles.length > 0 && (
+      {/* Pixel-style member chips */}
+      {profiles.length>0&&(
         <div className="flex flex-wrap gap-2">
-          {profiles.map((profile, idx) => {
-            const cfg: AvatarConfig = { ...DEFAULT_AVATAR, ...profile.avatarConfig };
-            const isAnon = profile.socialVisibility === 'anonymous';
-            const isSelected = selected?.id === profile.id;
-            return (
+          {profiles.map(profile=>{
+            const cfg:AvatarConfig={...DEFAULT_AVATAR,...profile.avatarConfig};
+            const isAnon=profile.socialVisibility==='anonymous';
+            const isSel=selected?.id===profile.id;
+            return(
               <button key={profile.id}
-                onClick={() => setSelected(isSelected ? null : profile)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-left transition-all
-                  ${isSelected
-                    ? 'bg-primary text-on-primary shadow-glow'
-                    : 'bg-surface-container-low ghost-border hover:bg-surface-container-high text-on-surface'
-                  }`}
-              >
-                <div className="w-2 h-2 rounded-full" style={{ background: isAnon ? '#888' : cfg.outfitColor }} />
-                <span className="font-label text-[10px] font-black uppercase tracking-wide">
-                  {isAnon ? 'Socio anónimo' : profile.displayName}
-                </span>
-                {typeof profile.currentStreak === 'number' && profile.currentStreak > 0 && (
-                  <span className="text-[8px] opacity-60">🔥{profile.currentStreak}</span>
+                onClick={()=>setSelected(isSel?null:profile)}
+                style={{fontFamily:'monospace',boxShadow:isSel?`2px 2px 0 #4dabf7`:undefined}}
+                className={`flex items-center gap-2 px-3 py-1.5 text-[9px] uppercase tracking-widest font-bold border transition-none
+                  ${isSel
+                    ?'bg-[#4dabf7] text-[#0d1117] border-[#4dabf7]'
+                    :'bg-[#0d1117] text-[#8090a0] border-[#1a2030] hover:border-[#4dabf740] hover:text-[#c0d0e0]'
+                  }`}>
+                <div className="w-2 h-2" style={{background:isAnon?'#555':cfg.outfitColor}}/>
+                {isAnon?'ANÓNIMO':profile.displayName.toUpperCase()}
+                {typeof profile.currentStreak==='number'&&profile.currentStreak>0&&(
+                  <span className="text-[#f06020]">🔥{profile.currentStreak}</span>
                 )}
               </button>
             );
@@ -441,7 +440,7 @@ export default function GymWorld() {
       )}
 
       <AnimatePresence>
-        {selected && <ProfilePanel profile={selected} onClose={() => setSelected(null)} />}
+        {selected&&<ProfilePanel profile={selected} onClose={()=>setSelected(null)}/>}
       </AnimatePresence>
     </div>
   );
