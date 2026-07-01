@@ -234,7 +234,7 @@ export default function GymWorld(){
 
           {/* LED scoreboard sign */}
           <polygon
-            points={`${bx(3,3,0)},${by(3,3,4.5)} ${bx(7,3,0)},${by(7,3,4.5)} ${bx(7,7,0)},${by(7,7,4.5)} ${bx(3,7,0)},${by(3,7,4.5)}`}
+            points={`${bx(3,3)},${by(3,3,4.5)} ${bx(7,3)},${by(7,3,4.5)} ${bx(7,7)},${by(7,7,4.5)} ${bx(3,7)},${by(3,7,4.5)}`}
             fill={C.neonD} stroke={C.neon} strokeWidth="1.5"/>
           <text
             x={bx(5,5)} y={by(5,5,4.5)+4}
