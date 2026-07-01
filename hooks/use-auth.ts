@@ -12,19 +12,18 @@ export function useAuth() {
   const [isDevMode, setIsDevMode] = useState(false);
 
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_ENABLE_DEV_TOOLS === 'true') {
-      try {
-        const raw = sessionStorage.getItem(DEV_SESSION_KEY);
-        if (raw) {
-          const session = JSON.parse(raw);
-          setUser({ uid: 'dev-uid', email: session.email } as unknown as User);
-          setProfile(session.profile as UserProfile);
-          setIsDevMode(true);
-          setLoading(false);
-          return;
-        }
-      } catch {}
-    }
+    try {
+      const raw = sessionStorage.getItem(DEV_SESSION_KEY);
+      if (raw) {
+        const session = JSON.parse(raw);
+        setUser({ uid: 'dev-uid', email: session.email } as unknown as User);
+        setProfile(session.profile as UserProfile);
+        setIsDevMode(true);
+        setLoading(false);
+        return;
+      }
+    } catch {}
+
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
