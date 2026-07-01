@@ -10,6 +10,13 @@ export interface PublicGymPresence {
   instagram?: string;
   publicBio?: string;
   currentStreak?: number;
+  avatarConfig?: {
+    sex?: 'male' | 'female';
+    hairStyle?: 'short' | 'long' | 'mohawk' | 'bun';
+    hairColor?: string;
+    outfitColor?: string;
+    skinColor?: string;
+  };
 }
 
 export function normalizeInstagram(value?: string): string {
@@ -42,6 +49,7 @@ export function buildPublicGymPresence(users: any[]): PublicGymPresence[] {
         instagram: normalizeInstagram(user.instagram) || undefined,
         publicBio: user.publicBio || undefined,
         currentStreak: typeof user.currentStreak === 'number' ? user.currentStreak : undefined,
+        avatarConfig: user.avatarConfig || undefined,
       };
     });
 }

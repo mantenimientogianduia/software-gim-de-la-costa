@@ -36,10 +36,10 @@ service cloud.firestore {
                data.keys().hasOnly([
                  'dni', 'email', 'role', 'firstName', 'lastName', 'status',
                  'atGym', 'currentActivity', 'lastCheckIn', 'membershipValidUntil',
-                 'lastPaymentDate', 'phone', 'weight', 'height', 'gender',
+                 'lastPaymentDate', 'phone', 'birthDate', 'weight', 'height', 'gender',
                  'otherSports', 'fitnessLevel', 'healthObservations', 'goals',
                  'weeklyTrainingGoal', 'currentPlan', 'socialVisibility',
-                 'instagram', 'publicBio', 'currentStreak', 'createdAt', 'updatedAt'
+                 'instagram', 'publicBio', 'currentStreak', 'avatarConfig', 'createdAt', 'updatedAt'
                ]) &&
                data.email is string && data.email.size() <= 256 &&
                data.role in ['admin', 'profesor', 'socio'] &&
@@ -66,7 +66,7 @@ service cloud.firestore {
       }
 
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());
-      allow list: if isAdmin(); 
+      allow list: if isAdmin();
 
       allow create: if (
         isSignedIn() && isOwner(userId) && isValidUser(incoming()) &&
@@ -181,7 +181,7 @@ service cloud.firestore {
     // --- Public Social Presence ---
     match /publicPresence/{userId} {
       function isValidPublicPresence(data) {
-        return data.keys().hasOnly(['id', 'displayName', 'socialVisibility', 'instagram', 'publicBio', 'currentStreak', 'checkedInAt']) &&
+        return data.keys().hasOnly(['id', 'displayName', 'socialVisibility', 'instagram', 'publicBio', 'currentStreak', 'checkedInAt', 'avatarConfig']) &&
                data.id == userId &&
                data.displayName is string &&
                data.displayName.size() <= 120 &&

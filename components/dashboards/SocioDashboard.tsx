@@ -8,7 +8,7 @@ import SessionView from '@/components/routines/SessionView';
 import { TrainingToolbox } from '@/components/training/TrainingToolbox';
 import StreakDisplay from '@/components/training/StreakDisplay';
 import PersonalInfo from '@/components/profile/PersonalInfo';
-import GymPresence from '@/components/social/GymPresence';
+import GymWorld from '@/components/social/GymWorld';
 import SocioPayments from '@/components/socio/SocioPayments';
 import { useClasses, useUserBookings } from '@/hooks/use-classes';
 
@@ -362,7 +362,7 @@ export default function SocioDashboard({ profile }: { profile: UserProfile & { i
                      )}
 
                      {activeTab === 'community' && (
-                       <GymPresence />
+                       <GymWorld />
                      )}
 
                      {activeTab === 'pagos' && (

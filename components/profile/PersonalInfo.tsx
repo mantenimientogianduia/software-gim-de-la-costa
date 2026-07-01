@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { UserProfile, userService } from '@/services/user.service';
 import { motion } from 'motion/react';
 import { normalizeInstagram } from '@/services/social.service';
+import AvatarCustomizer from '@/components/profile/AvatarCustomizer';
+import { AvatarConfig, DEFAULT_AVATAR } from '@/components/social/AvatarSprite';
 
 export default function PersonalInfo({ profile }: { profile: UserProfile & { id: string } }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -23,6 +25,7 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
     instagram: profile.instagram || '',
     publicBio: profile.publicBio || '',
   });
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>({ ...DEFAULT_AVATAR, ...(profile.avatarConfig as Partial<AvatarConfig> | undefined) });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -39,6 +42,7 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
         ...formData,
         socialVisibility: formData.socialVisibility as UserProfile['socialVisibility'],
         instagram: normalizeInstagram(formData.instagram),
+        avatarConfig,
       });
       setSuccess(true);
       setIsEditing(false);
@@ -260,6 +264,13 @@ export default function PersonalInfo({ profile }: { profile: UserProfile & { id:
                 {formData.socialVisibility === 'hidden' && (
                   <p className="text-sm text-tertiary mt-2">No vas a aparecer en la sección Comunidad.</p>
                 )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 md:col-span-2">
+              <label className="font-label text-[10px] uppercase tracking-widest text-tertiary">Tu avatar en la sala</label>
+              <div className="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl p-5">
+                <AvatarCustomizer value={avatarConfig} onChange={setAvatarConfig} />
               </div>
             </div>
 

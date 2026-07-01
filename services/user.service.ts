@@ -38,6 +38,13 @@ export interface UserProfile {
   instagram?: string;
   publicBio?: string;
   currentStreak?: number;
+  avatarConfig?: {
+    sex?: 'male' | 'female';
+    hairStyle?: 'short' | 'long' | 'mohawk' | 'bun';
+    hairColor?: string;
+    outfitColor?: string;
+    skinColor?: string;
+  };
   createdAt: any;
   updatedAt: any;
 }
@@ -126,7 +133,7 @@ export class UserService {
     await updateDoc(userRef, { phone, updatedAt: serverTimestamp() });
   }
 
-  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName' | 'phone' | 'socialVisibility' | 'instagram' | 'publicBio'>>): Promise<void> {
+  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName' | 'phone' | 'socialVisibility' | 'instagram' | 'publicBio' | 'avatarConfig'>>): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
   }
