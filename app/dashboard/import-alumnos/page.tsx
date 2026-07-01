@@ -84,8 +84,6 @@ export default function ImportAlumnosPage() {
               instagram: '',
               publicBio: '',
               currentStreak: 0,
-              importedFromExcel: true,
-              importedNro: alumno.nro,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             }, { merge: false });
