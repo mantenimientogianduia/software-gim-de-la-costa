@@ -24,6 +24,7 @@ export interface UserProfile {
   membershipValidUntil?: any;
   lastPaymentDate?: any;
   phone?: string;
+  birthDate?: string | null;
   weight?: number;
   height?: number;
   gender?: 'masculino' | 'femenino' | 'otro';
@@ -126,6 +127,15 @@ export class UserService {
   }
 
   async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName' | 'phone' | 'socialVisibility' | 'instagram' | 'publicBio'>>): Promise<void> {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
+  }
+
+  async updateUserFields(userId: string, data: Partial<{
+    firstName: string; lastName: string; dni: string; phone: string;
+    birthDate: string | null; role: 'admin' | 'profesor' | 'socio';
+    status: 'active' | 'inactive' | 'pending'; email: string;
+  }>): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
   }
