@@ -137,9 +137,9 @@ export default function GymWorld(){
       </div>
 
       {/* Room */}
-      <div className="relative w-full overflow-hidden" style={{background:'#05080e', borderRadius:0, border:'2px solid #1a2030', boxShadow:'4px 4px 0 #0d1220', minHeight:360}}>
+      <div className="relative w-full overflow-hidden" style={{background:'#05080e', border:'2px solid #1a2030', boxShadow:'4px 4px 0 #0d1220', aspectRatio:'800/500'}}>
         <svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg"
-          shapeRendering="crispEdges" className="w-full h-auto block" style={{maxHeight:480,imageRendering:'pixelated'}}>
+          shapeRendering="crispEdges" className="absolute inset-0 w-full h-full block" style={{imageRendering:'pixelated'}}>
 
           {/* ── FLOOR ──────────────────────────────────────────────────────── */}
           <polygon points={P([0,0],[L,0],[L,R],[0,R])} fill={C.floor} stroke={C.outline} strokeWidth="1"/>
@@ -355,46 +355,68 @@ export default function GymWorld(){
             </g>
           ))}
 
-          {/* ── AVATARS ─────────────────────────────────────────────────────── */}
+          {/* Avatar floor shadows (inside SVG for correct z-order) */}
           {!loading&&sorted.map(({profile,slot})=>{
             const [sl,sr]=slot;
-            const ax=bx(sl,sr), ay=by(sl,sr,0);
-            const cfg:AvatarConfig={...DEFAULT_AVATAR,...profile.avatarConfig};
-            const isAnon=profile.socialVisibility==='anonymous';
-            const isSel=selected?.id===profile.id;
-            const avatarH=Math.round(48*2.0625);
             return(
-              <g key={profile.id}>
-                {/* Shadow */}
-                <ellipse cx={ax} cy={ay+2} rx={18} ry={7} fill="black" opacity={0.45}/>
-                <foreignObject x={ax-32} y={ay-avatarH-18} width={64} height={avatarH+22}
-                  style={{overflow:'visible',cursor:'pointer'}}
-                  onClick={()=>setSelected(isSel?null:profile)}>
-                  <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
-                    {/* Pixel name tag */}
-                    <div style={{
-                      background: isSel?C.neon:'#0d1117cc',
-                      color: isSel?'#0d1117':'#e0e0e0',
-                      border:`1px solid ${isSel?C.neon:'#4dabf740'}`,
-                      padding:'1px 6px',
-                      fontFamily:'monospace',
-                      fontSize:8,
-                      fontWeight:'bold',
-                      letterSpacing:1,
-                      textTransform:'uppercase',
-                      whiteSpace:'nowrap',
-                      marginBottom:3,
-                      boxShadow: isSel?`2px 2px 0 ${C.neonD}`:undefined,
-                    }}>
-                      {isAnon?'???':profile.displayName.split(' ')[0]}
-                    </div>
-                    <AvatarSprite config={cfg} size={48} isAnonymous={isAnon} isSelected={isSel}/>
-                  </div>
-                </foreignObject>
-              </g>
+              <ellipse key={profile.id}
+                cx={bx(sl,sr)} cy={by(sl,sr,0)+3}
+                rx={20} ry={8} fill="black" opacity={0.5}/>
             );
           })}
         </svg>
+
+        {/* ── AVATAR OVERLAY (positioned divs, no foreignObject) ────────────── */}
+        {!loading&&sorted.map(({profile,slot},idx)=>{
+          const [sl,sr]=slot;
+          const ax=bx(sl,sr), ay=by(sl,sr,0);
+          const cfg:AvatarConfig={...DEFAULT_AVATAR,...profile.avatarConfig};
+          const isAnon=profile.socialVisibility==='anonymous';
+          const isSel=selected?.id===profile.id;
+          // Percentage position inside the 800×500 viewBox
+          const pctX=(ax/800)*100;
+          const pctY=(ay/500)*100;
+          return(
+            <button
+              key={profile.id}
+              onClick={()=>setSelected(isSel?null:profile)}
+              className="absolute focus:outline-none"
+              style={{
+                left:`${pctX}%`,
+                top:`${pctY}%`,
+                transform:'translate(-50%,-100%)',
+                zIndex: 10 + idx,
+                display:'flex',
+                flexDirection:'column',
+                alignItems:'center',
+                gap:2,
+                cursor:'pointer',
+                background:'none',
+                border:'none',
+                padding:0,
+              }}
+              aria-label={`Ver perfil de ${profile.displayName}`}
+            >
+              {/* Pixel name tag */}
+              <div style={{
+                background: isSel?C.neon:'rgba(5,8,14,0.85)',
+                color: isSel?'#05080e':'#e0e8f0',
+                border:`1px solid ${isSel?C.neon:'#4dabf730'}`,
+                padding:'1px 6px 1px 6px',
+                fontFamily:'monospace',
+                fontSize:9,
+                fontWeight:'bold',
+                letterSpacing:1,
+                textTransform:'uppercase',
+                whiteSpace:'nowrap',
+                boxShadow: isSel?`2px 2px 0 ${C.neonD}, 0 0 8px ${C.neon}60`:undefined,
+              }}>
+                {isAnon?'???':profile.displayName.split(' ')[0]}
+              </div>
+              <AvatarSprite config={cfg} size={48} isAnonymous={isAnon} isSelected={isSel}/>
+            </button>
+          );
+        })}
 
         {isEmpty&&(
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/50">
