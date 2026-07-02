@@ -4,535 +4,552 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PublicGymPresence, socialService } from '@/services/social.service';
 import AvatarSprite, { AvatarConfig, DEFAULT_AVATAR } from './AvatarSprite';
 
-interface ExtendedPresence extends PublicGymPresence { avatarConfig?: Partial<AvatarConfig>; }
+interface ExtendedPresence extends PublicGymPresence {
+  avatarConfig?: Partial<AvatarConfig>;
+  checkedInAt?: { toDate?: () => Date } | string | null;
+}
 
-// ── Isometric math ────────────────────────────────────────────────────────────
-const OX=400, OY=440;
-const DLx=-34, DLy=-14, DRx=34, DRy=-14, DZy=-36;
-const L=10, R=10, WH=5;
-function bx(l:number,r:number){return Math.round(OX+l*DLx+r*DRx);}
-function by(l:number,r:number,z=0){return Math.round(OY+l*DLy+r*DRy+z*DZy);}
-function p(l:number,r:number,z=0){return `${bx(l,r)},${by(l,r,z)}`;}
-function P(...pts:[number,number,number?][]){return pts.map(([l,r,z=0])=>p(l,r,z)).join(' ');}
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-// Avatares distribuidos por toda la sala, evitando el equipamiento
-const SLOTS:[number,number][]=[
-  [2,2],[2,5],[2,8],
-  [4,2],[4,5],[4,8],
-  [5,3],[5,6],
-  [6,2],[6,7],
-];
+function useNow() {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
 
-// ── Caja isométrica de 3 caras ────────────────────────────────────────────────
-function Box({l,r,lw,rw,h,top,lf,rf,stroke='#0a0c10',sw=1}:{
-  l:number;r:number;lw:number;rw:number;h:number;
-  top:string;lf:string;rf:string;stroke?:string;sw?:number;
-}){
-  return(
-    <g stroke={stroke} strokeWidth={sw} strokeLinejoin="miter">
-      <polygon points={P([l,r],[l+lw,r],[l+lw,r,h],[l,r,h])}            fill={lf}/>
-      <polygon points={P([l,r],[l,r+rw],[l,r+rw,h],[l,r,h])}            fill={rf}/>
-      <polygon points={P([l,r,h],[l+lw,r,h],[l+lw,r+rw,h],[l,r+rw,h])} fill={top}/>
-    </g>
+function fmtElapsed(ts: ExtendedPresence['checkedInAt'], now: number): string {
+  if (!ts) return '';
+  try {
+    const d = typeof ts === 'object' && ts.toDate ? ts.toDate() : new Date(ts as string);
+    const mins = Math.max(0, Math.floor((now - d.getTime()) / 60_000));
+    if (mins < 1) return 'recién';
+    if (mins < 60) return `${mins} min`;
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+  } catch {
+    return '';
+  }
+}
+
+// Genera un color de contraste legible sobre un color de fondo
+function isLight(hex: string): boolean {
+  const h = hex.replace('#', '');
+  if (h.length < 6) return false;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 128;
+}
+
+// ── Tarjeta de miembro ────────────────────────────────────────────────────────
+
+interface CardProps {
+  profile: ExtendedPresence;
+  now: number;
+  index: number;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+function MemberCard({ profile, now, index, isSelected, onClick }: CardProps) {
+  const cfg: AvatarConfig = { ...DEFAULT_AVATAR, ...profile.avatarConfig };
+  const isAnon = profile.socialVisibility === 'anonymous';
+  const accent = isAnon ? '#4a5470' : (cfg.outfitColor || '#1565c0');
+  const elapsed = fmtElapsed(profile.checkedInAt, now);
+  const streak = profile.currentStreak;
+
+  return (
+    <motion.button
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.92 }}
+      transition={{ duration: 0.25, delay: index * 0.07 }}
+      onClick={onClick}
+      className="focus:outline-none text-left w-full"
+      style={{
+        background: isSelected
+          ? `linear-gradient(160deg, #101828 0%, #0d1525 100%)`
+          : `linear-gradient(160deg, #0c1422 0%, #0a1020 100%)`,
+        border: `2px solid ${isSelected ? accent : '#1c2a40'}`,
+        boxShadow: isSelected
+          ? `0 0 0 1px ${accent}30, 0 12px 40px ${accent}18, inset 0 1px 0 ${accent}15`
+          : `inset 0 1px 0 #ffffff08`,
+        padding: '0 0 16px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        cursor: 'pointer',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
+      }}
+      aria-label={`Ver perfil de ${profile.displayName}`}
+    >
+      {/* Franja de color superior */}
+      <div style={{
+        width: '100%',
+        height: 4,
+        background: accent,
+        flexShrink: 0,
+        boxShadow: `0 2px 10px ${accent}60`,
+      }} />
+
+      {/* Badge LIVE */}
+      <div style={{
+        position: 'absolute', top: 12, right: 10,
+        display: 'flex', alignItems: 'center', gap: 4,
+        fontFamily: 'monospace', fontSize: 7, fontWeight: 700,
+        color: '#00cc88', textTransform: 'uppercase', letterSpacing: 2,
+      }}>
+        <span style={{
+          width: 5, height: 5, borderRadius: '50%',
+          background: '#00cc88',
+          display: 'inline-block',
+          animation: 'gym-pulse 1.8s ease-in-out infinite',
+        }} />
+        LIVE
+      </div>
+
+      {/* Avatar */}
+      <div style={{ marginTop: 20, marginBottom: 8 }}>
+        <motion.div
+          animate={isSelected ? { filter: `drop-shadow(0 0 12px ${accent}90)` } : { filter: 'none' }}
+          transition={{ duration: 0.2 }}
+        >
+          <AvatarSprite config={cfg} size={72} isAnonymous={isAnon} isSelected={isSelected} />
+        </motion.div>
+      </div>
+
+      {/* Nombre */}
+      <p style={{
+        fontFamily: 'monospace',
+        fontSize: 10,
+        fontWeight: 700,
+        color: isSelected ? '#ffffff' : '#c8daea',
+        textTransform: 'uppercase',
+        letterSpacing: 1.5,
+        padding: '0 12px',
+        textAlign: 'center',
+        lineHeight: 1.3,
+        wordBreak: 'break-word',
+        maxWidth: '100%',
+      }}>
+        {isAnon ? '??? ANÓNIMO' : profile.displayName}
+      </p>
+
+      {/* Instagram */}
+      {!isAnon && profile.instagram && (
+        <p style={{
+          fontFamily: 'monospace', fontSize: 8,
+          color: accent, marginTop: 2,
+          letterSpacing: 1, opacity: 0.9,
+        }}>
+          {profile.instagram}
+        </p>
+      )}
+
+      {/* Stats */}
+      {(elapsed || (typeof streak === 'number' && streak > 0)) && (
+        <div style={{
+          display: 'flex', gap: 14, marginTop: 10, alignItems: 'center',
+          borderTop: '1px solid #1a2840', paddingTop: 10, width: 'calc(100% - 24px)',
+          justifyContent: 'center',
+        }}>
+          {elapsed && (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#00d8ff', lineHeight: 1 }}>
+                {elapsed}
+              </p>
+              <p style={{ fontFamily: 'monospace', fontSize: 6, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 3 }}>
+                EN GYM
+              </p>
+            </div>
+          )}
+          {typeof streak === 'number' && streak > 0 && (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#f06020', lineHeight: 1 }}>
+                🔥{streak}
+              </p>
+              <p style={{ fontFamily: 'monospace', fontSize: 6, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 3 }}>
+                RACHA
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Bio snippet */}
+      {!isAnon && profile.publicBio && (
+        <p style={{
+          fontFamily: 'monospace', fontSize: 8, color: '#4a6080',
+          lineHeight: 1.6, textAlign: 'center',
+          padding: '8px 12px 0',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        } as React.CSSProperties}>
+          {profile.publicBio}
+        </p>
+      )}
+    </motion.button>
   );
 }
 
-// ── Panel de perfil ───────────────────────────────────────────────────────────
-function ProfilePanel({profile,onClose}:{profile:ExtendedPresence;onClose:()=>void}){
-  const cfg:AvatarConfig={...DEFAULT_AVATAR,...profile.avatarConfig};
-  const isAnon=profile.socialVisibility==='anonymous';
-  return(
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-      className="fixed inset-0 z-[90] flex items-end md:items-center justify-center p-4" role="dialog" aria-modal="true">
-      <button className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose}/>
-      <motion.div initial={{scale:0.9,y:24}} animate={{scale:1,y:0}} exit={{scale:0.9,y:24}}
-        className="relative w-full max-w-sm border-2 border-[#00d8ff] bg-[#0d1117] p-6"
-        style={{fontFamily:'monospace',boxShadow:'4px 4px 0 #00d8ff'}}>
-        <button onClick={onClose}
-          className="absolute top-3 right-3 w-7 h-7 border border-[#00d8ff] text-[#00d8ff] flex items-center justify-center text-xs font-bold hover:bg-[#00d8ff] hover:text-black transition-colors">
-          X
-        </button>
-        <div className="flex flex-col items-center gap-3 pt-1">
-          <AvatarSprite config={cfg} size={64} isAnonymous={isAnon}/>
-          <div className="text-center">
-            <p className="text-[9px] uppercase tracking-[0.3em] text-[#00d8ff] font-bold mb-1">▶ ENTRENANDO AHORA</p>
-            <h3 className="text-xl font-bold uppercase tracking-wider text-white">{profile.displayName}</h3>
-            {profile.instagram&&<p className="text-[10px] tracking-widest text-[#00d8ff] mt-1">{profile.instagram}</p>}
-          </div>
-        </div>
-        {profile.publicBio&&(
-          <p className="mt-4 text-xs text-[#8090a0] leading-relaxed text-center border-t border-[#00d8ff30] pt-4">
-            {profile.publicBio}
-          </p>
-        )}
-        {typeof profile.currentStreak==='number'&&profile.currentStreak>0&&(
-          <div className="mt-4 border border-[#f0600030] bg-[#f060000a] p-3 flex items-center gap-3">
-            <span className="text-2xl">🔥</span>
-            <div>
-              <p className="text-[8px] uppercase tracking-widest text-[#8090a0]">RACHA</p>
-              <p className="text-2xl font-bold text-[#f06020]">{profile.currentStreak} DÍAS</p>
+// ── Modal de perfil ───────────────────────────────────────────────────────────
+
+function ProfileModal({ profile, now, onClose }: {
+  profile: ExtendedPresence;
+  now: number;
+  onClose: () => void;
+}) {
+  const cfg: AvatarConfig = { ...DEFAULT_AVATAR, ...profile.avatarConfig };
+  const isAnon = profile.socialVisibility === 'anonymous';
+  const accent = isAnon ? '#4a5470' : (cfg.outfitColor || '#1565c0');
+  const elapsed = fmtElapsed(profile.checkedInAt, now);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[90] flex items-end md:items-center justify-center p-4"
+      role="dialog" aria-modal="true"
+    >
+      <button className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+
+      <motion.div
+        initial={{ scale: 0.92, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.92, y: 20 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 300 }}
+        className="relative w-full max-w-sm"
+        style={{
+          background: 'linear-gradient(160deg, #0f1e30 0%, #0a1220 100%)',
+          border: `2px solid ${accent}`,
+          boxShadow: `4px 4px 0 ${accent}50, 0 24px 80px #00000090, 0 0 0 1px ${accent}20`,
+          fontFamily: 'monospace',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header coloreado */}
+        <div style={{
+          height: 5, background: accent,
+          boxShadow: `0 0 16px ${accent}80`,
+        }} />
+
+        <div style={{ padding: '24px 24px 28px' }}>
+          {/* Cerrar */}
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: 14, right: 14,
+              width: 28, height: 28,
+              border: `1px solid ${accent}`,
+              color: accent,
+              background: 'transparent',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              fontFamily: 'monospace',
+            }}
+          >
+            ×
+          </button>
+
+          {/* Avatar + nombre */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <motion.div animate={{ filter: `drop-shadow(0 0 16px ${accent}80)` }}>
+              <AvatarSprite config={cfg} size={96} isAnonymous={isAnon} />
+            </motion.div>
+
+            <div style={{ textAlign: 'center' }}>
+              <p style={{
+                fontSize: 8, letterSpacing: '0.3em', color: '#00cc88',
+                textTransform: 'uppercase', fontWeight: 700, marginBottom: 6,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00cc88', display: 'inline-block', animation: 'gym-pulse 1.8s infinite' }} />
+                ENTRENANDO AHORA
+              </p>
+              <h3 style={{
+                fontSize: 20, fontWeight: 900, color: 'white',
+                textTransform: 'uppercase', letterSpacing: 2, lineHeight: 1.1,
+              }}>
+                {isAnon ? 'ANÓNIMO' : profile.displayName}
+              </h3>
+              {!isAnon && profile.instagram && (
+                <p style={{ fontSize: 10, color: accent, marginTop: 4, letterSpacing: 1 }}>
+                  {profile.instagram}
+                </p>
+              )}
             </div>
           </div>
-        )}
-        {isAnon&&<p className="mt-4 text-xs text-[#8090a0] italic text-center">Socio anónimo.</p>}
+
+          {/* Stats */}
+          {(elapsed || (typeof profile.currentStreak === 'number' && profile.currentStreak > 0)) && (
+            <div style={{
+              display: 'flex', gap: 0, marginTop: 20,
+              borderTop: `1px solid ${accent}30`,
+              borderBottom: `1px solid ${accent}20`,
+              paddingTop: 16, paddingBottom: 16,
+              justifyContent: 'center',
+            }}>
+              {elapsed && (
+                <div style={{ textAlign: 'center', flex: 1, borderRight: `1px solid #1a2840` }}>
+                  <p style={{ fontSize: 28, fontWeight: 900, color: '#00d8ff', lineHeight: 1 }}>{elapsed}</p>
+                  <p style={{ fontSize: 7, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 2, marginTop: 4 }}>EN GYM HOY</p>
+                </div>
+              )}
+              {typeof profile.currentStreak === 'number' && profile.currentStreak > 0 && (
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                  <p style={{ fontSize: 28, fontWeight: 900, color: '#f06020', lineHeight: 1 }}>🔥{profile.currentStreak}</p>
+                  <p style={{ fontSize: 7, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 2, marginTop: 4 }}>DÍAS DE RACHA</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Bio */}
+          {!isAnon && profile.publicBio && (
+            <p style={{
+              fontSize: 11, color: '#6080a0', lineHeight: 1.8,
+              textAlign: 'center', marginTop: 16,
+            }}>
+              {profile.publicBio}
+            </p>
+          )}
+          {isAnon && (
+            <p style={{ fontSize: 10, color: '#3a5070', fontStyle: 'italic', textAlign: 'center', marginTop: 16 }}>
+              Este socio prefiere mantenerse anónimo.
+            </p>
+          )}
+        </div>
       </motion.div>
     </motion.div>
   );
 }
 
-export default function GymWorld(){
-  const [profiles,setProfiles]=useState<ExtendedPresence[]>([]);
-  const [loading,setLoading]=useState(true);
-  const [selected,setSelected]=useState<ExtendedPresence|null>(null);
+// ── Componente principal ──────────────────────────────────────────────────────
 
-  useEffect(()=>{
-    const unsub=socialService.getPublicGymPresence(data=>{
+export default function GymWorld() {
+  const [profiles, setProfiles] = useState<ExtendedPresence[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<ExtendedPresence | null>(null);
+  const now = useNow();
+
+  useEffect(() => {
+    const unsub = socialService.getPublicGymPresence(data => {
       setProfiles(data as ExtendedPresence[]);
       setLoading(false);
     });
     return unsub;
-  },[]);
+  }, []);
 
-  const isEmpty=!loading&&profiles.length===0;
-  const sorted=[...profiles]
-    .map((profile,i)=>({profile,slot:SLOTS[i%SLOTS.length]}))
-    .sort((a,b)=>(b.slot[0]+b.slot[1])-(a.slot[0]+a.slot[1]));
+  const isEmpty = !loading && profiles.length === 0;
 
-  // ── Paleta de colores vibrante ─────────────────────────────────────────────
-  const C={
-    // Piso — madera oscura cálida
-    floor:   '#2c1f0e', floorAlt: '#3a2a14', floorLine:'#4a3820',
-    // Paredes — gris concreto medio (MUCHO más claro que el piso)
-    wallL:   '#5e6472', wallLd:  '#4e5460', wallLhi: '#72788a',
-    wallR:   '#545866', wallRd:  '#444858', wallRhi: '#686e80',
-    mortar:  '#3e4250',
-    // Metales — plateado cromado real
-    metal:   '#7292a8', metalD:  '#526878', metalL:  '#8caabe', metalHi:'#aec8da',
-    // Discos de pesas — naranja-rojo vivo
-    plate:   '#e04000', plateL:  '#ff5010', plateD:  '#922800',
-    // Discos azules
-    plateB:  '#1858d0', plateBL: '#2070ec', plateBD: '#0c3890',
-    // Banco — azul profundo
-    bench:   '#162888', benchL:  '#2440b0', benchD:  '#0e1a60',
-    // Pantallas
-    neon:    '#00d8ff', neonD:   '#004c6a',
-    neonG:   '#00cc88', neonGd:  '#003d28',
-    // Colores de mancuernas por peso
-    db5:     '#1e6ee0', db5d:    '#0e3e90',
-    db10:    '#20b048', db10d:   '#107028',
-    db15:    '#d8c000', db15d:   '#806000',
-    db20:    '#e84000', db20d:   '#902000',
-    db25:    '#cc1830', db25d:   '#800010',
-    db30:    '#303030', db30d:   '#101010',
-    outline: '#0a0c10',
-  };
+  // Ranking por racha
+  const withStreak = [...profiles]
+    .filter(p => typeof p.currentStreak === 'number' && p.currentStreak > 0)
+    .sort((a, b) => (b.currentStreak ?? 0) - (a.currentStreak ?? 0));
+  const maxStreak = withStreak[0]?.currentStreak ?? 1;
 
-  const nearX=bx(0,0), nearY=by(0,0);
-  const leftX=bx(L,0), leftY=by(L,0);
-  const rightX=bx(0,R), rightY=by(0,R);
-  const nearTopY=by(0,0,WH);
-  const leftTopY=by(L,0,WH);
-  const rightTopY=by(0,R,WH);
+  // Columnas de la grilla según cantidad
+  const cols = profiles.length === 1 ? 1
+    : profiles.length === 2 ? 2
+    : profiles.length === 3 ? 3
+    : 4;
 
-  // Mancuernas en pared derecha: silhouette en espacio de pantalla
-  const wallDumbbells=[
-    {r:1.2, color:C.db5,  dk:C.db5d},
-    {r:2.6, color:C.db10, dk:C.db10d},
-    {r:4.0, color:C.db15, dk:C.db15d},
-    {r:5.4, color:C.db20, dk:C.db20d},
-    {r:6.8, color:C.db25, dk:C.db25d},
-    {r:8.2, color:C.db30, dk:C.db30d},
-  ];
+  return (
+    <>
+      <style>{`
+        @keyframes gym-pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.35; transform: scale(0.75); }
+        }
+      `}</style>
 
-  return(
-    <div className="space-y-3 animate-in fade-in duration-500">
-      {/* Encabezado */}
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h2 className="font-headline text-3xl font-black uppercase tracking-tight">Comunidad en el gym</h2>
-          <p className="mt-1 text-sm text-tertiary" style={{fontFamily:'monospace'}}>
-            {loading?'CONECTANDO...'
-              :profiles.length===0?'SALA VACÍA'
-              :`${profiles.length} SOCIO${profiles.length!==1?'S':''} ENTRENANDO`}
-          </p>
-        </div>
-        {profiles.length>0&&(
-          <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-[#00d8ff]">
-            <div className="w-2 h-2 bg-[#00d8ff] animate-pulse"/>EN VIVO
-          </div>
-        )}
-      </div>
+      <div className="space-y-4 animate-in fade-in duration-500">
 
-      {/* Sala isométrica */}
-      <div className="relative w-full overflow-hidden"
-        style={{background:'#080c14',border:'2px solid #1e2840',boxShadow:'4px 4px 0 #0d1220',aspectRatio:'800/500'}}>
-        <svg viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg"
-          shapeRendering="crispEdges" className="absolute inset-0 w-full h-full block"
-          style={{imageRendering:'pixelated'}}>
-
-          {/* ── PISO ──────────────────────────────────────────────────────── */}
-          <polygon points={P([0,0],[L,0],[L,R],[0,R])} fill={C.floor} stroke={C.outline} strokeWidth="1"/>
-          {/* Grilla de pisos de madera */}
-          {[0,1,2,3,4,5,6,7,8,9,10].map(r=>(
-            <line key={`fl${r}`} x1={bx(0,r)} y1={by(0,r)} x2={bx(L,r)} y2={by(L,r)}
-              stroke={C.floorLine} strokeWidth={r%2===0?1.5:0.8}/>
-          ))}
-          {[0,2,4,6,8,10].map(l=>(
-            <line key={`fr${l}`} x1={bx(l,0)} y1={by(l,0)} x2={bx(l,R)} y2={by(l,R)}
-              stroke={C.floorAlt} strokeWidth="0.8"/>
-          ))}
-          {/* Mat central de goma negra */}
-          <polygon points={P([2,2],[7,2],[7,8],[2,8])} fill="#1a1410" stroke={C.floorLine} strokeWidth="1" opacity="0.7"/>
-          {/* Logo en el mat */}
-          <polygon points={P([4,4],[5,4],[5,6],[4,6])} fill="#2a1e08" stroke={C.floorLine} strokeWidth="0.5" opacity="0.8"/>
-
-          {/* ── PARED IZQUIERDA ───────────────────────────────────────────── */}
-          <polygon points={`${nearX},${nearY} ${leftX},${leftY} ${leftX},${leftTopY} ${nearX},${nearTopY}`}
-            fill={C.wallL} stroke={C.outline} strokeWidth="1"/>
-          {/* Líneas horizontales de mampostería */}
-          {[1,2,3,4].map(z=>(
-            <line key={`lz${z}`} x1={bx(0,0)} y1={by(0,0,z)} x2={bx(L,0)} y2={by(L,0,z)}
-              stroke={C.mortar} strokeWidth="2.5"/>
-          ))}
-          {/* Juntas verticales escalonadas */}
-          {[0,1,2,3].map(z=>
-            [1.5,3.5,5.5,7.5,9.5].map(l=>(
-              <line key={`lv${z}${l}`}
-                x1={bx(l+(z%2*1),0)} y1={by(l+(z%2*1),0,z)}
-                x2={bx(l+(z%2*1),0)} y2={by(l+(z%2*1),0,z+1)}
-                stroke={C.mortar} strokeWidth="1.5"/>
-            ))
-          )}
-          {/* Franja de highlight superior */}
-          <polygon points={`${bx(0,0)},${by(0,0,4.6)} ${bx(L,0)},${by(L,0,4.6)} ${bx(L,0)},${by(L,0,WH)} ${bx(0,0)},${by(0,0,WH)}`}
-            fill={C.wallLhi} opacity="0.4"/>
-          {/* Espejos en pared izquierda (3 paneles grandes) */}
-          {([[0.4,2.8,0.6,4.2],[3.2,6.0,0.6,4.2],[6.4,9.6,0.6,4.2]] as [number,number,number,number][])
-            .map(([l1,l2,z1,z2],mi)=>(
-            <g key={mi}>
-              <polygon
-                points={`${bx(l1,0)},${by(l1,0,z1)} ${bx(l2,0)},${by(l2,0,z1)} ${bx(l2,0)},${by(l2,0,z2)} ${bx(l1,0)},${by(l1,0,z2)}`}
-                fill="#2a4e72" stroke="#5088b8" strokeWidth="2"/>
-              {/* Reflejo */}
-              <polygon
-                points={`${bx(l1,0)},${by(l1,0,z1)} ${bx(l1+0.5,0)},${by(l1+0.5,0,z1)} ${bx(l1+0.5,0)},${by(l1+0.5,0,z2)} ${bx(l1,0)},${by(l1,0,z2)}`}
-                fill="white" opacity="0.12"/>
-              {/* Marco */}
-              <polygon
-                points={`${bx(l1,0)},${by(l1,0,z1)} ${bx(l2,0)},${by(l2,0,z1)} ${bx(l2,0)},${by(l2,0,z2)} ${bx(l1,0)},${by(l1,0,z2)}`}
-                fill="none" stroke="#6090c0" strokeWidth="1.5"/>
-            </g>
-          ))}
-
-          {/* ── PARED DERECHA ─────────────────────────────────────────────── */}
-          <polygon points={`${nearX},${nearY} ${rightX},${rightY} ${rightX},${rightTopY} ${nearX},${nearTopY}`}
-            fill={C.wallR} stroke={C.outline} strokeWidth="1"/>
-          {[1,2,3,4].map(z=>(
-            <line key={`rz${z}`} x1={bx(0,0)} y1={by(0,0,z)} x2={bx(0,R)} y2={by(0,R,z)}
-              stroke={C.mortar} strokeWidth="2.5"/>
-          ))}
-          {[0,1,2,3].map(z=>
-            [1.5,3.5,5.5,7.5,9.5].map(r=>(
-              <line key={`rv${z}${r}`}
-                x1={bx(0,r+(z%2*1))} y1={by(0,r+(z%2*1),z)}
-                x2={bx(0,r+(z%2*1))} y2={by(0,r+(z%2*1),z+1)}
-                stroke={C.mortar} strokeWidth="1.5"/>
-            ))
-          )}
-          {/* Highlight superior */}
-          <polygon points={`${bx(0,0)},${by(0,0,4.6)} ${bx(0,R)},${by(0,R,4.6)} ${bx(0,R)},${by(0,R,WH)} ${bx(0,0)},${by(0,0,WH)}`}
-            fill={C.wallRhi} opacity="0.4"/>
-
-          {/* Cartel del gym en pared derecha */}
-          <polygon
-            points={`${bx(0,3.5)},${by(0,3.5,3.2)} ${bx(0,7.0)},${by(0,7.0,3.2)} ${bx(0,7.0)},${by(0,7.0,4.1)} ${bx(0,3.5)},${by(0,3.5,4.1)}`}
-            fill={C.neonD} stroke={C.neon} strokeWidth="2"/>
-          <text x={bx(0,5.25)} y={by(0,5.25,3.65)+4}
-            textAnchor="middle" fontSize="12" fontWeight="bold"
-            fontFamily="monospace" letterSpacing="4" fill={C.neon}>GYM</text>
-
-          {/* Rack de mancuernas en pared derecha */}
-          {/* Barras horizontales del rack */}
-          {[0.45, 1.15, 1.85].map(z=>(
-            <line key={`rackbar${z}`}
-              x1={bx(0,0.8)} y1={by(0,0.8,z)}
-              x2={bx(0,9.2)} y2={by(0,9.2,z)}
-              stroke={C.metalHi} strokeWidth="4"/>
-          ))}
-          {/* Soportes verticales del rack */}
-          {[0.9,5.0,9.0].map(r=>(
-            <line key={`racksup${r}`}
-              x1={bx(0,r)} y1={by(0,r,0)}
-              x2={bx(0,r)} y2={by(0,r,2.2)}
-              stroke={C.metalL} strokeWidth="3"/>
-          ))}
-          {/* Mancuernas: silhouette en posición isométrica de pared */}
-          {wallDumbbells.flatMap(({r,color,dk})=>
-            ([0.12, 0.82, 1.52] as number[]).map((z)=>{
-              const cx=bx(0,r);
-              const cy=by(0,r,z);
-              // Silueta de halter: cabeza-mango-cabeza horizontalmente en pantalla
-              const dx=10; // ancho de cada cabeza
-              const hh=7;  // semi-alto de cabeza
-              const hx=3;  // ancho del mango
-              const hy=3;  // semi-alto del mango
-              return(
-                <g key={`db${r}-${z}`}>
-                  {/* Cabeza 1 */}
-                  <rect x={cx-dx-hx} y={cy-hh} width={dx} height={hh*2} fill={color} stroke={C.outline} strokeWidth="0.8"/>
-                  <rect x={cx-dx-hx+1} y={cy-hh+1} width={3} height={4} fill="white" opacity="0.15"/>
-                  {/* Mango */}
-                  <rect x={cx-hx} y={cy-hy} width={hx*2} height={hy*2} fill={C.metalL} stroke={C.outline} strokeWidth="0.6"/>
-                  {/* Cabeza 2 */}
-                  <rect x={cx+hx} y={cy-hh} width={dx} height={hh*2} fill={color} stroke={C.outline} strokeWidth="0.8"/>
-                  <rect x={cx+hx+1} y={cy-hh+1} width={3} height={4} fill="white" opacity="0.15"/>
-                </g>
-              );
-            })
-          )}
-
-          {/* Reloj en pared derecha */}
-          <ellipse cx={bx(0,9)} cy={by(0,9,3.0)} rx={16} ry={9} fill="#1a1e2e" stroke={C.metalL} strokeWidth="2"/>
-          <ellipse cx={bx(0,9)} cy={by(0,9,3.0)} rx={11} ry={6} fill="#0d1020"/>
-          <line x1={bx(0,9)} y1={by(0,9,3.0)} x2={bx(0,9)} y2={by(0,9,3.0)-5} stroke={C.neon} strokeWidth="1.2"/>
-          <line x1={bx(0,9)} y1={by(0,9,3.0)} x2={bx(0,9)+4} y2={by(0,9,3.0)+1} stroke={C.metalHi} strokeWidth="1"/>
-          <ellipse cx={bx(0,9)} cy={by(0,9,3.0)} rx={2} ry={1} fill={C.metalHi}/>
-
-          {/* ── BORDE Y LUCES DE TECHO ─────────────────────────────────────── */}
-          <line x1={bx(0,0)} y1={by(0,0,WH)} x2={bx(L,0)} y2={by(L,0,WH)} stroke={C.wallLhi} strokeWidth="2"/>
-          <line x1={bx(0,0)} y1={by(0,0,WH)} x2={bx(0,R)} y2={by(0,R,WH)} stroke={C.wallRhi} strokeWidth="2"/>
-          {/* Tiras de neon en techo */}
-          <line x1={bx(2,1)} y1={by(2,1,4.92)} x2={bx(2,9)} y2={by(2,9,4.92)} stroke={C.neon} strokeWidth="3" opacity="0.8"/>
-          <line x1={bx(8,1)} y1={by(8,1,4.92)} x2={bx(8,9)} y2={by(8,9,4.92)} stroke={C.neon} strokeWidth="3" opacity="0.8"/>
-          <line x1={bx(2,1)} y1={by(2,1,4.92)} x2={bx(8,1)} y2={by(8,1,4.92)} stroke={C.neon} strokeWidth="3" opacity="0.5"/>
-          <line x1={bx(2,9)} y1={by(2,9,4.92)} x2={bx(8,9)} y2={by(8,9,4.92)} stroke={C.neon} strokeWidth="3" opacity="0.5"/>
-
-          {/* ── EQUIPAMIENTO (back → front para z-order correcto) ───────── */}
-
-          {/* === RACK DE SENTADILLAS IZQUIERDO (l=8-10, r=1.5-4) === */}
-          {/* Posts traseros */}
-          <Box l={9.5} r={1.8} lw={0.35} rw={0.35} h={4.5} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={9.5} r={3.4} lw={0.35} rw={0.35} h={4.5} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          {/* Posts delanteros */}
-          <Box l={8.0} r={1.8} lw={0.35} rw={0.35} h={4.5} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={8.0} r={3.4} lw={0.35} rw={0.35} h={4.5} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          {/* Barra superior */}
-          <Box l={8.0} r={1.8} lw={1.85} rw={0.18} h={4.6} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
-          <Box l={8.0} r={3.4} lw={1.85} rw={0.18} h={4.6} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
-          {/* Barra de seguridad */}
-          <Box l={8.0} r={1.8} lw={1.85} rw={0.18} h={2.4} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
-          {/* Barra olímpica */}
-          <Box l={8.2} r={1.2} lw={1.4} rw={2.8} h={3.0} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          {/* Discos naranja */}
-          <Box l={8.2} r={1.2} lw={0.18} rw={0.7} h={3.55} top={C.plateL} lf={C.plate} rf={C.plateD}/>
-          <Box l={9.4} r={1.2} lw={0.18} rw={0.7} h={3.55} top={C.plateL} lf={C.plate} rf={C.plateD}/>
-          <Box l={8.2} r={3.3} lw={0.18} rw={0.7} h={3.55} top={C.plateL} lf={C.plate} rf={C.plateD}/>
-          <Box l={9.4} r={3.3} lw={0.18} rw={0.7} h={3.55} top={C.plateL} lf={C.plate} rf={C.plateD}/>
-
-          {/* === RACK DE SENTADILLAS DERECHO (l=8-10, r=6-8.5) === */}
-          <Box l={9.5} r={6.2} lw={0.35} rw={0.35} h={4.5} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={9.5} r={7.8} lw={0.35} rw={0.35} h={4.5} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={8.0} r={6.2} lw={0.35} rw={0.35} h={4.5} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={8.0} r={7.8} lw={0.35} rw={0.35} h={4.5} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={8.0} r={6.2} lw={1.85} rw={0.18} h={4.6} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
-          <Box l={8.0} r={7.8} lw={1.85} rw={0.18} h={4.6} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
-          <Box l={8.2} r={5.6} lw={1.4} rw={2.8} h={3.0} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          {/* Discos azules */}
-          <Box l={8.2} r={5.6} lw={0.18} rw={0.7} h={3.55} top={C.plateBL} lf={C.plateB} rf={C.plateBD}/>
-          <Box l={9.4} r={5.6} lw={0.18} rw={0.7} h={3.55} top={C.plateBL} lf={C.plateB} rf={C.plateBD}/>
-          <Box l={8.2} r={7.7} lw={0.18} rw={0.7} h={3.55} top={C.plateBL} lf={C.plateB} rf={C.plateBD}/>
-          <Box l={9.4} r={7.7} lw={0.18} rw={0.7} h={3.55} top={C.plateBL} lf={C.plateB} rf={C.plateBD}/>
-
-          {/* === BANCO DE PRESS (l=6-8, r=4-6) === */}
-          {/* Estructura del banco */}
-          <Box l={6.0} r={4.0} lw={2.2} rw={2.0} h={0.9} top={C.metal} lf={C.metalD} rf={C.metalD}/>
-          {/* Pad azul */}
-          <Box l={6.1} r={4.1} lw={2.0} rw={1.8} h={1.05} top={C.benchL} lf={C.bench} rf={C.benchD}/>
-          {/* Posts del banco */}
-          <Box l={6.2} r={4.2} lw={0.22} rw={0.22} h={2.2} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={7.6} r={4.2} lw={0.22} rw={0.22} h={2.2} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          {/* Barra y soportes del banco */}
-          <Box l={6.2} r={4.2} lw={1.6} rw={0.18} h={2.25} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
-          {/* Barra olímpica */}
-          <Box l={6.3} r={3.6} lw={1.4} rw={2.8} h={1.65} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          {/* Discos */}
-          <Box l={6.3} r={3.6} lw={0.15} rw={0.55} h={2.1} top={C.plateL} lf={C.plate} rf={C.plateD}/>
-          <Box l={7.6} r={3.6} lw={0.15} rw={0.55} h={2.1} top={C.plateL} lf={C.plate} rf={C.plateD}/>
-          <Box l={6.3} r={5.85} lw={0.15} rw={0.55} h={2.1} top={C.plateL} lf={C.plate} rf={C.plateD}/>
-          <Box l={7.6} r={5.85} lw={0.15} rw={0.55} h={2.1} top={C.plateL} lf={C.plate} rf={C.plateD}/>
-
-          {/* === MÁQUINA DE CABLE (l=7-9, r=1-3) === */}
-          {/* Cuerpo */}
-          <Box l={7.3} r={0.8} lw={1.8} rw={2.2} h={3.8} top={C.metalL} lf={C.metal} rf={C.metalD}/>
-          {/* Pantalla LED */}
-          <polygon
-            points={`${bx(7.5,0.8)},${by(7.5,0.8,2.6)} ${bx(8.9,0.8)},${by(8.9,0.8,2.6)} ${bx(8.9,0.8)},${by(8.9,0.8,3.4)} ${bx(7.5,0.8)},${by(7.5,0.8,3.4)}`}
-            fill={C.neonGd} stroke={C.neonG} strokeWidth="1.5"/>
-          <line x1={bx(7.7,0.8)} y1={by(7.7,0.8,2.85)} x2={bx(8.7,0.8)} y2={by(8.7,0.8,2.85)} stroke={C.neonG} strokeWidth="1" opacity="0.7"/>
-          <line x1={bx(7.7,0.8)} y1={by(7.7,0.8,3.05)} x2={bx(8.3,0.8)} y2={by(8.3,0.8,3.05)} stroke={C.neonG} strokeWidth="1" opacity="0.5"/>
-          {/* Polea */}
-          <ellipse cx={bx(8.2,2)} cy={by(8.2,2,3.9)} rx={9} ry={5} fill={C.metalHi} stroke={C.outline} strokeWidth="0.8"/>
-          <ellipse cx={bx(8.2,2)} cy={by(8.2,2,3.9)} rx={4} ry={2} fill={C.metal}/>
-
-          {/* === CINTAS CAMINADORAS (l=1-3, r=4.5-9) === */}
-          {/* Cinta 1 (r=7-9) */}
-          <Box l={1.0} r={7.0} lw={2.2} rw={2.2} h={1.5} top={C.metal} lf={C.metalD} rf={C.metalD}/>
-          {/* Belt */}
-          <polygon points={P([1.1,7.1,1.52],[2.9,7.1,1.52],[2.9,9.0,1.52],[1.1,9.0,1.52])} fill="#0d0d18"/>
-          {/* Upright posts */}
-          <Box l={1.2} r={7.0} lw={0.18} rw={0.12} h={3.2} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={2.7} r={7.0} lw={0.18} rw={0.12} h={3.2} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={1.2} r={7.0} lw={1.7} rw={0.12} h={3.1} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
-          {/* Pantalla verde */}
-          <polygon
-            points={`${bx(1.6,7.0)},${by(1.6,7.0,2.8)} ${bx(2.4,7.0)},${by(2.4,7.0,2.8)} ${bx(2.4,7.0)},${by(2.4,7.0,3.05)} ${bx(1.6,7.0)},${by(1.6,7.0,3.05)}`}
-            fill={C.neonGd} stroke={C.neonG} strokeWidth="1.2"/>
-
-          {/* Cinta 2 (r=4.5-6.8) */}
-          <Box l={1.0} r={4.5} lw={2.2} rw={2.2} h={1.5} top={C.metal} lf={C.metalD} rf={C.metalD}/>
-          <polygon points={P([1.1,4.6,1.52],[2.9,4.6,1.52],[2.9,6.5,1.52],[1.1,6.5,1.52])} fill="#0d0d18"/>
-          <Box l={1.2} r={4.5} lw={0.18} rw={0.12} h={3.2} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={2.7} r={4.5} lw={0.18} rw={0.12} h={3.2} top={C.metalHi} lf={C.metalL} rf={C.metal}/>
-          <Box l={1.2} r={4.5} lw={1.7} rw={0.12} h={3.1} top={C.metalL} lf={C.metalHi} rf={C.metal}/>
-          <polygon
-            points={`${bx(1.6,4.5)},${by(1.6,4.5,2.8)} ${bx(2.4,4.5)},${by(2.4,4.5,2.8)} ${bx(2.4,4.5)},${by(2.4,4.5,3.05)} ${bx(1.6,4.5)},${by(1.6,4.5,3.05)}`}
-            fill={C.neonGd} stroke={C.neonG} strokeWidth="1.2"/>
-
-          {/* === ENFRIADOR DE AGUA (l=9, r=9) === */}
-          <Box l={9.2} r={8.8} lw={0.6} rw={0.9} h={2.0} top="#60b8e0" lf="#38a0d0" rf="#1880b0"/>
-          <Box l={9.25} r={8.85} lw={0.5} rw={0.8} h={2.7} top="#c8ecff" lf="#90d8f8" rf="#68c0e8"/>
-
-          {/* === RACK DE DISCOS DE PISO (l=9-10, r=0.5-9) === */}
-          <Box l={9.1} r={0.4} lw={0.8} rw={9.0} h={0.8} top={C.metal} lf={C.metalD} rf={C.metalD}/>
-          {/* Discos en el rack de piso */}
-          {([
-            [0.8, C.plateBL, C.plateB, C.plateBD],
-            [1.8, C.plateBL, C.plateB, C.plateBD],
-            [2.8, C.plateBL, C.plateB, C.plateBD],
-            [4.0, C.plateL,  C.plate,  C.plateD],
-            [5.0, C.plateL,  C.plate,  C.plateD],
-            [6.0, C.plateL,  C.plate,  C.plateD],
-            [7.2, C.neonG,   '#20a050','#105020'],
-            [8.2, C.neonG,   '#20a050','#105020'],
-          ] as [number,string,string,string][]).map(([ri,topC,lfC,rfC],i)=>(
-            <Box key={i} l={9.2} r={ri} lw={0.6} rw={0.6} h={1.6} top={topC} lf={lfC} rf={rfC}/>
-          ))}
-
-          {/* Discos en el piso (sueltos) */}
-          {([[7.5,3.2],[7.0,4.8],[7.8,5.5]] as [number,number][]).map(([l,r],i)=>(
-            <g key={i}>
-              <ellipse cx={bx(l,r)} cy={by(l,r,0.1)} rx={15} ry={7}
-                fill={i===0?C.plate:C.plateB} stroke={C.outline} strokeWidth="0.8"/>
-              <ellipse cx={bx(l,r)} cy={by(l,r,0.1)} rx={5} ry={2.5} fill={C.outline} opacity="0.6"/>
-            </g>
-          ))}
-
-          {/* Sombras de avatares en el piso */}
-          {!loading&&sorted.map(({profile,slot})=>{
-            const [sl,sr]=slot;
-            return(
-              <ellipse key={profile.id}
-                cx={bx(sl,sr)} cy={by(sl,sr,0)+4}
-                rx={22} ry={9} fill="black" opacity="0.45"/>
-            );
-          })}
-        </svg>
-
-        {/* ── OVERLAY DE AVATARES (divs absolutos, no foreignObject) ─────────── */}
-        {!loading&&sorted.map(({profile,slot},idx)=>{
-          const [sl,sr]=slot;
-          const ax=bx(sl,sr), ay=by(sl,sr,0);
-          const cfg:AvatarConfig={...DEFAULT_AVATAR,...profile.avatarConfig};
-          const isAnon=profile.socialVisibility==='anonymous';
-          const isSel=selected?.id===profile.id;
-          return(
-            <button
-              key={profile.id}
-              onClick={()=>setSelected(isSel?null:profile)}
-              className="absolute focus:outline-none"
-              style={{
-                left:`${(ax/800)*100}%`,
-                top:`${(ay/500)*100}%`,
-                transform:'translate(-50%,-100%)',
-                zIndex:10+idx,
-                display:'flex',
-                flexDirection:'column',
-                alignItems:'center',
-                gap:2,
-                cursor:'pointer',
-                background:'none',
-                border:'none',
-                padding:0,
-              }}
-              aria-label={`Ver perfil de ${profile.displayName}`}
-            >
-              {/* Etiqueta de nombre pixel-art */}
-              <div style={{
-                background: isSel?C.neon:'rgba(8,12,20,0.88)',
-                color: isSel?'#080c14':'#d8e8f0',
-                border:`1px solid ${isSel?C.neon:'#00d8ff30'}`,
-                padding:'1px 6px',
-                fontFamily:'monospace',
-                fontSize:9,
-                fontWeight:'bold',
-                letterSpacing:1,
-                textTransform:'uppercase',
-                whiteSpace:'nowrap',
-                boxShadow: isSel?`2px 2px 0 #004c6a, 0 0 8px ${C.neon}60`:undefined,
-              }}>
-                {isAnon?'???':profile.displayName.split(' ')[0]}
-              </div>
-              <AvatarSprite config={cfg} size={48} isAnonymous={isAnon} isSelected={isSel}/>
-            </button>
-          );
-        })}
-
-        {isEmpty&&(
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/50">
-            <div style={{fontFamily:'monospace',textAlign:'center'}}>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-[#00d8ff] mb-2">▶ SALA VACÍA</p>
-              <p className="text-xs text-[#4a5a70]">Activá tu visibilidad en tu perfil</p>
-              <p className="text-xs text-[#4a5a70]">para aparecer aquí mientras entrenás.</p>
+        {/* ── Encabezado ─────────────────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-headline text-3xl font-black uppercase tracking-tight">
+              Comunidad en el gym
+            </h2>
+            <div style={{ fontFamily: 'monospace', marginTop: 5 }}>
+              {loading ? (
+                <span style={{ fontSize: 10, color: '#3a5070', letterSpacing: 2, textTransform: 'uppercase' }}>
+                  CONECTANDO...
+                </span>
+              ) : profiles.length > 0 ? (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  fontSize: 10, color: '#00cc88', fontWeight: 700,
+                  letterSpacing: 2, textTransform: 'uppercase',
+                }}>
+                  <span style={{
+                    width: 7, height: 7, borderRadius: '50%',
+                    background: '#00cc88', display: 'inline-block',
+                    animation: 'gym-pulse 1.8s infinite',
+                  }} />
+                  {profiles.length} SOCIO{profiles.length !== 1 ? 'S' : ''} ENTRENANDO AHORA
+                </span>
+              ) : (
+                <span style={{ fontSize: 10, color: '#2a3a50', letterSpacing: 2, textTransform: 'uppercase' }}>
+                  SALA VACÍA
+                </span>
+              )}
             </div>
           </div>
-        )}
-        {loading&&(
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-            <div className="w-6 h-6 border-2 border-[#00d8ff30] border-t-[#00d8ff] rounded-full animate-spin"/>
+        </div>
+
+        {/* ── Loading ────────────────────────────────────────────────────── */}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
+            <div className="w-8 h-8 border-2 border-[#00d8ff20] border-t-[#00d8ff] rounded-full animate-spin" />
           </div>
+        )}
+
+        {/* ── Estado vacío ───────────────────────────────────────────────── */}
+        {isEmpty && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: 'linear-gradient(160deg, #0c1422 0%, #080e18 100%)',
+              border: '2px solid #1a2840',
+              padding: '64px 24px',
+              textAlign: 'center',
+              fontFamily: 'monospace',
+            }}
+          >
+            <div style={{ fontSize: 48, marginBottom: 20, opacity: 0.15 }}>🏋️</div>
+            <p style={{
+              fontSize: 10, color: '#00d8ff', textTransform: 'uppercase',
+              letterSpacing: 4, fontWeight: 700, marginBottom: 10,
+            }}>
+              SALA VACÍA
+            </p>
+            <p style={{ fontSize: 10, color: '#2a3a50', lineHeight: 1.9 }}>
+              Activá tu visibilidad en tu perfil<br />
+              para aparecer aquí mientras entrenás.
+            </p>
+          </motion.div>
+        )}
+
+        {/* ── Grid de tarjetas ───────────────────────────────────────────── */}
+        {!loading && profiles.length > 0 && (
+          <AnimatePresence>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${cols}, 1fr)`,
+              gap: 2,
+            }}>
+              {profiles.map((profile, i) => (
+                <MemberCard
+                  key={profile.id}
+                  profile={profile}
+                  now={now}
+                  index={i}
+                  isSelected={selected?.id === profile.id}
+                  onClick={() => setSelected(selected?.id === profile.id ? null : profile)}
+                />
+              ))}
+            </div>
+          </AnimatePresence>
+        )}
+
+        {/* ── Ranking de rachas ──────────────────────────────────────────── */}
+        {withStreak.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: profiles.length * 0.07 + 0.1 }}
+            style={{
+              background: 'linear-gradient(160deg, #0c1422 0%, #080e18 100%)',
+              border: '2px solid #1a2840',
+              padding: '16px 20px 20px',
+              fontFamily: 'monospace',
+            }}
+          >
+            <p style={{
+              fontSize: 8, color: '#3a5270', textTransform: 'uppercase',
+              letterSpacing: 3, marginBottom: 14, fontWeight: 700,
+            }}>
+              ▶ RANKING DE RACHAS · PRESENTES HOY
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {withStreak.map((p, i) => {
+                const cfg: AvatarConfig = { ...DEFAULT_AVATAR, ...p.avatarConfig };
+                const isAnon = p.socialVisibility === 'anonymous';
+                const accent = isAnon ? '#4a5470' : (cfg.outfitColor || '#1565c0');
+                const streak = p.currentStreak ?? 0;
+                const pct = maxStreak > 0 ? (streak / maxStreak) * 100 : 0;
+                const medals = ['🥇', '🥈', '🥉'];
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelected(selected?.id === p.id ? null : p)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      background: 'none', border: 'none', padding: 0,
+                      cursor: 'pointer', textAlign: 'left', width: '100%',
+                    }}
+                  >
+                    <span style={{ fontSize: 14, width: 22, flexShrink: 0, textAlign: 'center' }}>
+                      {medals[i] ?? <span style={{ fontSize: 9, color: '#3a5070' }}>{i + 1}.</span>}
+                    </span>
+                    <div style={{ flexShrink: 0 }}>
+                      <AvatarSprite config={cfg} size={20} isAnonymous={isAnon} />
+                    </div>
+                    <span style={{
+                      fontSize: 9, color: '#8aa8c8', flex: 1,
+                      textTransform: 'uppercase', letterSpacing: 1,
+                      overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                    }}>
+                      {isAnon ? 'Anónimo' : p.displayName}
+                    </span>
+                    {/* Barra de progreso */}
+                    <div style={{ width: 90, height: 5, background: '#0a1020', flexShrink: 0, position: 'relative' }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.6, delay: i * 0.08 + 0.2 }}
+                        style={{
+                          position: 'absolute', top: 0, left: 0,
+                          height: '100%', background: accent,
+                          boxShadow: `0 0 6px ${accent}80`,
+                        }}
+                      />
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, color: '#f06020',
+                      minWidth: 40, textAlign: 'right', flexShrink: 0,
+                    }}>
+                      🔥{streak}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
         )}
       </div>
 
-      {/* Chips de miembros */}
-      {profiles.length>0&&(
-        <div className="flex flex-wrap gap-2">
-          {profiles.map(profile=>{
-            const cfg:AvatarConfig={...DEFAULT_AVATAR,...profile.avatarConfig};
-            const isAnon=profile.socialVisibility==='anonymous';
-            const isSel=selected?.id===profile.id;
-            return(
-              <button key={profile.id}
-                onClick={()=>setSelected(isSel?null:profile)}
-                style={{fontFamily:'monospace',boxShadow:isSel?'2px 2px 0 #00d8ff':undefined}}
-                className={`flex items-center gap-2 px-3 py-1.5 text-[9px] uppercase tracking-widest font-bold border transition-none
-                  ${isSel
-                    ?'bg-[#00d8ff] text-[#080c14] border-[#00d8ff]'
-                    :'bg-[#0d1117] text-[#8090a0] border-[#1a2030] hover:border-[#00d8ff40] hover:text-[#c0d0e0]'
-                  }`}>
-                <div className="w-2 h-2" style={{background:isAnon?'#555':cfg.outfitColor}}/>
-                {isAnon?'ANÓNIMO':profile.displayName.toUpperCase()}
-                {typeof profile.currentStreak==='number'&&profile.currentStreak>0&&(
-                  <span className="text-[#f06020]">🔥{profile.currentStreak}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
+      {/* ── Modal de perfil ───────────────────────────────────────────────── */}
       <AnimatePresence>
-        {selected&&<ProfilePanel profile={selected} onClose={()=>setSelected(null)}/>}
+        {selected && (
+          <ProfileModal
+            profile={selected}
+            now={now}
+            onClose={() => setSelected(null)}
+          />
+        )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
