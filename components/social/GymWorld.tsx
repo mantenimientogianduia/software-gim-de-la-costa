@@ -2,15 +2,20 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PublicGymPresence, socialService } from '@/services/social.service';
-import AvatarSprite, { AvatarConfig, DEFAULT_AVATAR } from './AvatarSprite';
 
 interface ExtendedPresence extends PublicGymPresence {
-  avatarConfig?: Partial<AvatarConfig>;
   checkedInAt?: { toDate?: () => Date } | string | null;
 }
 
-// Colores de slot — garantizan variedad visual aunque todos tengan el mismo avatar
-const SLOT_COLORS = ['#00d8ff', '#f06020', '#00cc88', '#c060ff', '#f0c000', '#ff4060'];
+// Pares de gradiente por slot — garantizan variedad visual
+const GRADIENTS = [
+  ['#00c6fb', '#005bea'],   // cyan → blue
+  ['#f77062', '#fe5196'],   // coral → pink
+  ['#43e97b', '#38f9d7'],   // green → teal
+  ['#a18cd1', '#fbc2eb'],   // purple → pink
+  ['#ffecd2', '#fcb69f'],   // peach → salmon
+  ['#84fab0', '#8fd3f4'],   // mint → sky
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -35,191 +40,197 @@ function fmtElapsed(ts: ExtendedPresence['checkedInAt'], now: number): string {
   } catch { return ''; }
 }
 
-// ── Tarjeta de miembro ────────────────────────────────────────────────────────
-
-interface CardProps {
-  profile: ExtendedPresence;
-  now: number;
-  slotIndex: number;
-  isSelected: boolean;
-  onClick: () => void;
+function getInitials(name: string, isAnon: boolean): string {
+  if (isAnon) return '?';
+  return name.trim().split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase() || '?';
 }
 
-function MemberCard({ profile, now, slotIndex, isSelected, onClick }: CardProps) {
-  const cfg: AvatarConfig    = { ...DEFAULT_AVATAR, ...profile.avatarConfig };
-  const isAnon               = profile.socialVisibility === 'anonymous';
-  const accent               = SLOT_COLORS[slotIndex % SLOT_COLORS.length];
-  const elapsed              = fmtElapsed(profile.checkedInAt, now);
-  const streak               = typeof profile.currentStreak === 'number' ? profile.currentStreak : null;
-  const rank                 = slotIndex + 1;
+// ── Avatar circular moderno ───────────────────────────────────────────────────
+
+function Avatar({ name, isAnon, gradientIdx, size = 96 }: {
+  name: string;
+  isAnon: boolean;
+  gradientIdx: number;
+  size?: number;
+}) {
+  const [from, to] = GRADIENTS[gradientIdx % GRADIENTS.length];
+  const initials   = getInitials(name, isAnon);
+  const fontSize   = size * 0.33;
+
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      position: 'relative', overflow: 'hidden',
+      boxShadow: `0 4px 20px ${from}50, 0 1px 0 rgba(255,255,255,0.15) inset`,
+    }}>
+      {/* Brillo interno */}
+      <div style={{
+        position: 'absolute', top: '-20%', left: '-10%',
+        width: '70%', height: '60%', borderRadius: '50%',
+        background: 'rgba(255,255,255,0.18)',
+        filter: 'blur(8px)',
+        pointerEvents: 'none',
+      }} />
+      <span style={{
+        fontSize, fontWeight: 800, color: 'rgba(255,255,255,0.95)',
+        letterSpacing: -0.5, userSelect: 'none',
+        textShadow: '0 1px 4px rgba(0,0,0,0.25)',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative', zIndex: 1,
+      }}>
+        {initials}
+      </span>
+    </div>
+  );
+}
+
+// ── Tarjeta de miembro ────────────────────────────────────────────────────────
+
+function MemberCard({ profile, now, idx, isSelected, onClick }: {
+  profile: ExtendedPresence;
+  now: number;
+  idx: number;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const isAnon  = profile.socialVisibility === 'anonymous';
+  const elapsed = fmtElapsed(profile.checkedInAt, now);
+  const streak  = typeof profile.currentStreak === 'number' ? profile.currentStreak : null;
+  const [from]  = GRADIENTS[idx % GRADIENTS.length];
 
   return (
     <motion.button
       layout
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.94 }}
-      transition={{ duration: 0.28, delay: slotIndex * 0.06 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.3, delay: idx * 0.07 }}
       onClick={onClick}
       className="focus:outline-none text-left"
       style={{
-        position: 'relative',
-        overflow: 'hidden',
-        background: isSelected
-          ? `linear-gradient(175deg, #101828 0%, #0d1a2e 60%, ${accent}12 100%)`
-          : `linear-gradient(175deg, #0c1520 0%, #08101c 100%)`,
-        border: `2px solid ${isSelected ? accent : '#1c2a3c'}`,
-        boxShadow: isSelected
-          ? `0 0 0 1px ${accent}25, 0 16px 48px ${accent}14, inset 0 0 60px ${accent}06`
-          : `inset 0 1px 0 #ffffff06, 0 4px 12px #00000040`,
-        cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'stretch',
-        transition: 'border-color 0.2s, box-shadow 0.2s',
         width: '100%',
+        background: isSelected ? '#111827' : '#0d1424',
+        border: `1.5px solid ${isSelected ? from + 'aa' : '#1e2d42'}`,
+        borderRadius: 16,
+        padding: '28px 20px 22px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+        cursor: 'pointer', position: 'relative', overflow: 'hidden',
+        boxShadow: isSelected
+          ? `0 0 0 1px ${from}30, 0 20px 60px ${from}15`
+          : '0 2px 12px rgba(0,0,0,0.4)',
+        transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
       }}
-      aria-label={`Ver perfil de ${profile.displayName}`}
     >
-      {/* ── Tira superior de color ── */}
-      <div style={{
-        height: 5, flexShrink: 0,
-        background: `linear-gradient(90deg, ${accent} 0%, ${accent}88 100%)`,
-        boxShadow: `0 0 14px ${accent}70, 0 2px 6px ${accent}40`,
-      }} />
+      {/* Glow de fondo sutil cuando está seleccionado */}
+      {isSelected && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: `radial-gradient(ellipse at 50% 0%, ${from}14 0%, transparent 65%)`,
+          pointerEvents: 'none',
+        }} />
+      )}
 
-      {/* ── Número de posición (decorativo) ── */}
+      {/* Badge LIVE */}
       <div style={{
-        position: 'absolute', top: 14, left: 12,
-        fontFamily: 'monospace', fontSize: 9, fontWeight: 700,
-        color: accent, letterSpacing: 1, opacity: 0.7,
-      }}>
-        #{rank.toString().padStart(2, '0')}
-      </div>
-
-      {/* ── Badge LIVE ── */}
-      <div style={{
-        position: 'absolute', top: 14, right: 12,
-        display: 'flex', alignItems: 'center', gap: 4,
-        fontFamily: 'monospace', fontSize: 7, fontWeight: 700,
-        color: '#00cc88', textTransform: 'uppercase', letterSpacing: 2,
+        position: 'absolute', top: 14, right: 14,
+        display: 'flex', alignItems: 'center', gap: 5,
+        background: '#0a2818', borderRadius: 20, padding: '3px 8px',
+        border: '1px solid #00cc8830',
       }}>
         <span style={{
           width: 5, height: 5, borderRadius: '50%', background: '#00cc88',
-          display: 'inline-block',
-          animation: 'gymLivePulse 1.8s ease-in-out infinite',
+          display: 'inline-block', animation: 'gymPulse 2s ease-in-out infinite',
         }} />
-        LIVE
+        <span style={{
+          fontFamily: 'monospace', fontSize: 8, fontWeight: 700,
+          color: '#00cc88', letterSpacing: 1.5, textTransform: 'uppercase',
+        }}>
+          LIVE
+        </span>
       </div>
 
-      {/* ── Avatar con halo ── */}
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        paddingTop: 28, paddingBottom: 0, gap: 0,
-      }}>
-        {/* Círculo de fondo */}
-        <div style={{
-          width: 112, height: 112,
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${accent}22 0%, ${accent}08 55%, transparent 75%)`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: isSelected ? `0 0 32px ${accent}35, inset 0 0 20px ${accent}10` : 'none',
-          transition: 'box-shadow 0.2s',
-          position: 'relative',
-        }}>
-          {/* Ring exterior */}
+      {/* Avatar */}
+      <div style={{ position: 'relative' }}>
+        {/* Ring pulsante */}
+        {isSelected && (
           <div style={{
-            position: 'absolute', inset: 0, borderRadius: '50%',
-            border: `1.5px solid ${accent}30`,
+            position: 'absolute', inset: -4, borderRadius: '50%',
+            border: `2px solid ${from}60`,
+            animation: 'gymRingPulse 2.5s ease-in-out infinite',
           }} />
-          <AvatarSprite config={cfg} size={80} isAnonymous={isAnon} isSelected={isSelected} />
-        </div>
+        )}
+        <Avatar
+          name={profile.displayName}
+          isAnon={isAnon}
+          gradientIdx={idx}
+          size={88}
+        />
       </div>
 
-      {/* ── Nombre ── */}
-      <div style={{ padding: '14px 14px 0', textAlign: 'center' }}>
-        <p className="font-headline" style={{
-          fontSize: 15, fontWeight: 900,
-          color: isSelected ? '#ffffff' : '#d8eaf8',
-          textTransform: 'uppercase', letterSpacing: 1,
-          lineHeight: 1.2, wordBreak: 'break-word',
+      {/* Nombre */}
+      <div style={{ textAlign: 'center', maxWidth: '100%' }}>
+        <p style={{
+          fontSize: 14, fontWeight: 700,
+          color: isSelected ? '#ffffff' : '#e8f0f8',
+          letterSpacing: 0.3, lineHeight: 1.2,
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          maxWidth: '100%',
         }}>
-          {isAnon ? '??? ANÓNIMO' : profile.displayName}
+          {isAnon ? 'Anónimo' : profile.displayName}
         </p>
         {!isAnon && profile.instagram && (
           <p style={{
-            fontFamily: 'monospace', fontSize: 9,
-            color: accent, marginTop: 3, letterSpacing: 1, opacity: 0.85,
+            fontSize: 10, color: from, marginTop: 2,
+            fontFamily: 'monospace', letterSpacing: 0.5, opacity: 0.8,
           }}>
             {profile.instagram}
           </p>
         )}
       </div>
 
-      {/* ── Stats bar ── */}
-      <div style={{
-        margin: '14px 14px 0',
-        borderTop: `1px solid ${accent}20`,
-        paddingTop: 12,
-        display: 'flex',
-        justifyContent: 'center',
-        gap: 20,
-        paddingBottom: 16,
-      }}>
-        {elapsed && (
-          <div style={{ textAlign: 'center' }}>
-            <p style={{
-              fontFamily: 'monospace', fontSize: 18, fontWeight: 900,
-              color: accent, lineHeight: 1,
-              textShadow: `0 0 12px ${accent}60`,
-            }}>
-              {elapsed}
-            </p>
-            <p style={{
-              fontFamily: 'monospace', fontSize: 6, color: '#2a4060',
-              textTransform: 'uppercase', letterSpacing: 2, marginTop: 4,
-            }}>
-              EN GYM
-            </p>
-          </div>
-        )}
-        {streak !== null && streak > 0 && (
-          <div style={{ textAlign: 'center' }}>
-            <p style={{
-              fontFamily: 'monospace', fontSize: 18, fontWeight: 900,
-              color: '#f06020', lineHeight: 1,
-              textShadow: '0 0 10px #f0602060',
-            }}>
-              🔥{streak}
-            </p>
-            <p style={{
-              fontFamily: 'monospace', fontSize: 6, color: '#2a4060',
-              textTransform: 'uppercase', letterSpacing: 2, marginTop: 4,
-            }}>
-              RACHA
-            </p>
-          </div>
-        )}
-        {!elapsed && streak === null && (
-          <p style={{
-            fontFamily: 'monospace', fontSize: 8, color: '#2a3a50',
-            textTransform: 'uppercase', letterSpacing: 2,
-          }}>
-            ENTRENANDO
-          </p>
-        )}
-      </div>
+      {/* Stats */}
+      {(elapsed || (streak !== null && streak > 0)) && (
+        <div style={{
+          display: 'flex', gap: 18,
+          borderTop: '1px solid #1e2d42', paddingTop: 12, width: '100%',
+          justifyContent: 'center',
+        }}>
+          {elapsed && (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{
+                fontSize: 16, fontWeight: 800, lineHeight: 1,
+                color: from, fontFamily: 'system-ui, sans-serif',
+              }}>
+                {elapsed}
+              </p>
+              <p style={{ fontSize: 9, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 4, fontFamily: 'monospace' }}>
+                en gym
+              </p>
+            </div>
+          )}
+          {streak !== null && streak > 0 && (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: 16, fontWeight: 800, color: '#f97316', lineHeight: 1, fontFamily: 'system-ui, sans-serif' }}>
+                🔥 {streak}
+              </p>
+              <p style={{ fontSize: 9, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 4, fontFamily: 'monospace' }}>
+                racha
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* ── Bio ── */}
+      {/* Bio */}
       {!isAnon && profile.publicBio && (
         <p style={{
-          fontFamily: 'monospace', fontSize: 8, color: '#3a5270',
-          lineHeight: 1.7, textAlign: 'center',
-          padding: '0 14px 14px',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
+          fontSize: 11, color: '#4a6080', lineHeight: 1.6,
+          textAlign: 'center', maxWidth: '100%',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          fontFamily: 'system-ui, sans-serif',
         } as React.CSSProperties}>
           {profile.publicBio}
         </p>
@@ -230,16 +241,15 @@ function MemberCard({ profile, now, slotIndex, isSelected, onClick }: CardProps)
 
 // ── Modal de perfil ───────────────────────────────────────────────────────────
 
-function ProfileModal({ profile, now, slotIndex, onClose }: {
+function ProfileModal({ profile, now, idx, onClose }: {
   profile: ExtendedPresence;
   now: number;
-  slotIndex: number;
+  idx: number;
   onClose: () => void;
 }) {
-  const cfg    = { ...DEFAULT_AVATAR, ...profile.avatarConfig } as AvatarConfig;
-  const isAnon = profile.socialVisibility === 'anonymous';
-  const accent = SLOT_COLORS[slotIndex % SLOT_COLORS.length];
+  const isAnon  = profile.socialVisibility === 'anonymous';
   const elapsed = fmtElapsed(profile.checkedInAt, now);
+  const [from, to] = GRADIENTS[idx % GRADIENTS.length];
 
   return (
     <motion.div
@@ -247,81 +257,108 @@ function ProfileModal({ profile, now, slotIndex, onClose }: {
       className="fixed inset-0 z-[90] flex items-end md:items-center justify-center p-4"
       role="dialog" aria-modal="true"
     >
-      <button className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <button className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={onClose} />
       <motion.div
-        initial={{ scale: 0.9, y: 28 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 28 }}
-        transition={{ type: 'spring', damping: 22, stiffness: 280 }}
+        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+        transition={{ type: 'spring', damping: 24, stiffness: 300 }}
         className="relative w-full max-w-xs overflow-hidden"
         style={{
-          background: `linear-gradient(160deg, #0f1e30 0%, #08101e 80%, ${accent}0a 100%)`,
-          border: `2px solid ${accent}`,
-          boxShadow: `4px 4px 0 ${accent}40, 0 24px 80px #00000090`,
-          fontFamily: 'monospace',
+          background: '#0d1424',
+          borderRadius: 20,
+          border: '1.5px solid #1e2d42',
+          boxShadow: `0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px ${from}25`,
         }}
       >
-        <div style={{ height: 5, background: accent, boxShadow: `0 0 20px ${accent}` }} />
-        <button onClick={onClose} style={{
-          position: 'absolute', top: 13, right: 13,
-          width: 28, height: 28, border: `1px solid ${accent}`,
-          color: accent, background: 'transparent',
-          fontFamily: 'monospace', fontSize: 15, fontWeight: 700, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>×</button>
-
-        <div style={{ padding: '20px 24px 28px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          {/* Avatar */}
+        {/* Header con gradiente */}
+        <div style={{
+          height: 120, position: 'relative', overflow: 'hidden',
+          background: `linear-gradient(135deg, ${from}55 0%, ${to}44 100%)`,
+        }}>
           <div style={{
-            width: 130, height: 130, borderRadius: '50%',
-            background: `radial-gradient(circle, ${accent}28 0%, transparent 70%)`,
-            border: `2px solid ${accent}40`,
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(to bottom, transparent 30%, #0d1424)',
+          }} />
+          <button onClick={onClose} style={{
+            position: 'absolute', top: 14, right: 14, width: 32, height: 32,
+            borderRadius: '50%', background: 'rgba(0,0,0,0.3)',
+            border: 'none', color: 'white', fontSize: 18, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: `0 0 32px ${accent}30`,
-          }}>
-            <AvatarSprite config={cfg} size={96} isAnonymous={isAnon} />
+          }}>×</button>
+        </div>
+
+        {/* Avatar centrado sobre el header */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: -52, position: 'relative', zIndex: 10 }}>
+          <div style={{ padding: 4, borderRadius: '50%', background: '#0d1424' }}>
+            <Avatar name={profile.displayName} isAnon={isAnon} gradientIdx={idx} size={96} />
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 28px 28px', textAlign: 'center' }}>
+          {/* Live badge */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: '#0a2818', borderRadius: 20, padding: '4px 12px',
+              border: '1px solid #00cc8840',
+              fontFamily: 'monospace', fontSize: 8, fontWeight: 700,
+              color: '#00cc88', letterSpacing: 1.5, textTransform: 'uppercase',
+            }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00cc88', animation: 'gymPulse 2s infinite', display: 'inline-block' }} />
+              ENTRENANDO AHORA
+            </span>
           </div>
 
-          {/* Nombre */}
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 8, color: '#00cc88', letterSpacing: 3, textTransform: 'uppercase', fontWeight: 700, marginBottom: 6,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00cc88', display: 'inline-block', animation: 'gymLivePulse 1.8s infinite' }} />
-              ENTRENANDO AHORA
+          <h3 style={{
+            fontSize: 20, fontWeight: 800, color: 'white', letterSpacing: 0.2,
+            fontFamily: 'system-ui, sans-serif', margin: '0 0 4px',
+          }}>
+            {isAnon ? 'Anónimo' : profile.displayName}
+          </h3>
+          {!isAnon && profile.instagram && (
+            <p style={{ fontSize: 12, color: from, fontFamily: 'monospace', marginBottom: 0 }}>
+              {profile.instagram}
             </p>
-            <h3 className="font-headline" style={{ fontSize: 22, fontWeight: 900, color: 'white', textTransform: 'uppercase', letterSpacing: 1.5 }}>
-              {isAnon ? 'ANÓNIMO' : profile.displayName}
-            </h3>
-            {!isAnon && profile.instagram && (
-              <p style={{ fontSize: 10, color: accent, marginTop: 4, letterSpacing: 1 }}>{profile.instagram}</p>
-            )}
-          </div>
+          )}
 
           {/* Stats */}
           {(elapsed || (typeof profile.currentStreak === 'number' && profile.currentStreak > 0)) && (
             <div style={{
-              display: 'flex', width: '100%',
-              borderTop: `1px solid ${accent}30`, borderBottom: `1px solid ${accent}20`,
-              paddingTop: 14, paddingBottom: 14,
+              display: 'flex', marginTop: 20, borderRadius: 12,
+              background: '#111827', border: '1px solid #1e2d42', overflow: 'hidden',
             }}>
               {elapsed && (
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                  <p style={{ fontSize: 30, fontWeight: 900, color: accent, lineHeight: 1, textShadow: `0 0 20px ${accent}60` }}>{elapsed}</p>
-                  <p style={{ fontSize: 7, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 2, marginTop: 5 }}>EN GYM HOY</p>
+                <div style={{ flex: 1, padding: '14px 0' }}>
+                  <p style={{ fontSize: 22, fontWeight: 800, color: from, lineHeight: 1, fontFamily: 'system-ui, sans-serif' }}>
+                    {elapsed}
+                  </p>
+                  <p style={{ fontSize: 9, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 4, fontFamily: 'monospace' }}>
+                    en gym hoy
+                  </p>
                 </div>
               )}
               {typeof profile.currentStreak === 'number' && profile.currentStreak > 0 && (
-                <div style={{ flex: 1, textAlign: 'center', borderLeft: elapsed ? `1px solid #1a2840` : 'none' }}>
-                  <p style={{ fontSize: 30, fontWeight: 900, color: '#f06020', lineHeight: 1 }}>🔥{profile.currentStreak}</p>
-                  <p style={{ fontSize: 7, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 2, marginTop: 5 }}>DÍAS DE RACHA</p>
+                <div style={{
+                  flex: 1, padding: '14px 0',
+                  borderLeft: elapsed ? '1px solid #1e2d42' : 'none',
+                }}>
+                  <p style={{ fontSize: 22, fontWeight: 800, color: '#f97316', lineHeight: 1, fontFamily: 'system-ui, sans-serif' }}>
+                    🔥 {profile.currentStreak}
+                  </p>
+                  <p style={{ fontSize: 9, color: '#3a5070', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 4, fontFamily: 'monospace' }}>
+                    días de racha
+                  </p>
                 </div>
               )}
             </div>
           )}
 
           {!isAnon && profile.publicBio && (
-            <p style={{ fontSize: 10, color: '#5070a0', lineHeight: 1.8, textAlign: 'center' }}>{profile.publicBio}</p>
+            <p style={{ fontSize: 12, color: '#5a7090', lineHeight: 1.7, marginTop: 16, fontFamily: 'system-ui, sans-serif' }}>
+              {profile.publicBio}
+            </p>
           )}
           {isAnon && (
-            <p style={{ fontSize: 10, color: '#3a5070', fontStyle: 'italic', textAlign: 'center' }}>
+            <p style={{ fontSize: 12, color: '#3a5070', fontStyle: 'italic', marginTop: 16, fontFamily: 'system-ui, sans-serif' }}>
               Este socio prefiere mantenerse anónimo.
             </p>
           )}
@@ -349,66 +386,83 @@ export default function GymWorld() {
 
   const isEmpty = !loading && profiles.length === 0;
 
-  const withStreak = [...profiles]
+  const withStreak = profiles
     .map((p, i) => ({ p, i }))
     .filter(({ p }) => typeof p.currentStreak === 'number' && p.currentStreak > 0)
     .sort((a, b) => (b.p.currentStreak ?? 0) - (a.p.currentStreak ?? 0));
 
   const maxStreak = withStreak[0]?.p.currentStreak ?? 1;
-
-  // Grid: 1 col si hay 1, 2 cols si hay 2-4, más si hay más
-  const gridCols = profiles.length === 1 ? 1 : profiles.length <= 4 ? Math.min(profiles.length, 4) : 4;
+  const cols = profiles.length === 1 ? 1 : profiles.length === 2 ? 2 : profiles.length === 3 ? 3 : 4;
 
   return (
     <>
       <style>{`
-        @keyframes gymLivePulse {
+        @keyframes gymPulse {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50%       { opacity: 0.3; transform: scale(0.7); }
+          50%       { opacity: 0.25; transform: scale(0.65); }
+        }
+        @keyframes gymRingPulse {
+          0%, 100% { opacity: 0.7; transform: scale(1); }
+          50%       { opacity: 0.2; transform: scale(1.08); }
         }
       `}</style>
 
-      <div className="space-y-3 animate-in fade-in duration-500">
+      <div className="space-y-4 animate-in fade-in duration-500">
 
         {/* ── Encabezado ─────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h2 className="font-headline text-3xl font-black uppercase tracking-tight">
-              Comunidad en el gym
-            </h2>
-            <div style={{ fontFamily: 'monospace', marginTop: 5, minHeight: 20 }}>
-              {loading ? (
-                <span style={{ fontSize: 10, color: '#2a3a50', letterSpacing: 2, textTransform: 'uppercase' }}>CONECTANDO...</span>
-              ) : profiles.length > 0 ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7,
-                  fontSize: 10, color: '#00cc88', fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase' }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#00cc88',
-                    display: 'inline-block', animation: 'gymLivePulse 1.8s infinite' }} />
-                  {profiles.length} SOCIO{profiles.length !== 1 ? 'S' : ''} ENTRENANDO AHORA
-                </span>
-              ) : (
-                <span style={{ fontSize: 10, color: '#2a3a50', letterSpacing: 2, textTransform: 'uppercase' }}>SALA VACÍA</span>
-              )}
-            </div>
+        <div>
+          <h2 className="font-headline text-3xl font-black uppercase tracking-tight">
+            Comunidad en el gym
+          </h2>
+          <div style={{ marginTop: 6, minHeight: 22 }}>
+            {loading ? (
+              <span style={{ fontSize: 12, color: '#3a5070', fontFamily: 'monospace', letterSpacing: 1 }}>
+                Conectando...
+              </span>
+            ) : profiles.length > 0 ? (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                fontSize: 12, color: '#00cc88', fontWeight: 600,
+                fontFamily: 'system-ui, sans-serif',
+              }}>
+                <span style={{
+                  width: 7, height: 7, borderRadius: '50%', background: '#00cc88',
+                  animation: 'gymPulse 2s infinite', display: 'inline-block',
+                }} />
+                {profiles.length} {profiles.length === 1 ? 'socio' : 'socios'} entrenando ahora
+              </span>
+            ) : (
+              <span style={{ fontSize: 12, color: '#2a3a50', fontFamily: 'system-ui, sans-serif' }}>
+                Sala vacía
+              </span>
+            )}
           </div>
         </div>
 
         {/* ── Loading ────────────────────────────────────────────────────── */}
         {loading && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
-            <div className="w-8 h-8 border-2 border-[#00d8ff15] border-t-[#00d8ff] rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-[#1e3050] border-t-[#00c6fb] rounded-full animate-spin" />
           </div>
         )}
 
         {/* ── Estado vacío ───────────────────────────────────────────────── */}
         {isEmpty && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            style={{ background: 'linear-gradient(160deg, #0c1520 0%, #080e18 100%)',
-              border: '2px solid #141e2c', padding: '72px 24px', textAlign: 'center', fontFamily: 'monospace' }}>
-            <div style={{ fontSize: 52, marginBottom: 20, opacity: 0.1 }}>🏋️</div>
-            <p style={{ fontSize: 10, color: '#00d8ff', textTransform: 'uppercase',
-              letterSpacing: 4, fontWeight: 700, marginBottom: 10 }}>SALA VACÍA</p>
-            <p style={{ fontSize: 10, color: '#2a3a50', lineHeight: 2 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: '#0d1424', borderRadius: 16, border: '1.5px solid #1e2d42',
+              padding: '72px 24px', textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.15 }}>🏋️</div>
+            <p style={{
+              fontSize: 15, fontWeight: 600, color: '#d0e4f8', marginBottom: 8,
+              fontFamily: 'system-ui, sans-serif',
+            }}>
+              La sala está vacía
+            </p>
+            <p style={{ fontSize: 12, color: '#2a3a50', lineHeight: 1.8, fontFamily: 'system-ui, sans-serif' }}>
               Activá tu visibilidad en tu perfil<br />para aparecer aquí mientras entrenás.
             </p>
           </motion.div>
@@ -416,18 +470,14 @@ export default function GymWorld() {
 
         {/* ── Grid de tarjetas ───────────────────────────────────────────── */}
         {!loading && profiles.length > 0 && (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
-            gap: 3,
-          }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12 }}>
             <AnimatePresence>
               {profiles.map((profile, i) => (
                 <MemberCard
                   key={profile.id}
                   profile={profile}
                   now={now}
-                  slotIndex={i}
+                  idx={i}
                   isSelected={selected?.id === profile.id}
                   onClick={() => setSelected(selected?.id === profile.id ? null : profile)}
                 />
@@ -439,46 +489,54 @@ export default function GymWorld() {
         {/* ── Ranking de rachas ──────────────────────────────────────────── */}
         {withStreak.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            style={{ background: 'linear-gradient(160deg, #0c1520 0%, #080e18 100%)',
-              border: '2px solid #141e2c', padding: '16px 20px 20px', fontFamily: 'monospace' }}>
-            <p style={{ fontSize: 8, color: '#2a4060', textTransform: 'uppercase',
-              letterSpacing: 3, marginBottom: 14, fontWeight: 700 }}>
-              ▶ RANKING DE RACHAS · PRESENTES HOY
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            style={{
+              background: '#0d1424', borderRadius: 16,
+              border: '1.5px solid #1e2d42', padding: '18px 20px 20px',
+            }}
+          >
+            <p style={{
+              fontSize: 11, color: '#3a5270', textTransform: 'uppercase',
+              letterSpacing: 2, marginBottom: 14, fontWeight: 700, fontFamily: 'monospace',
+            }}>
+              Ranking de rachas · presentes hoy
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {withStreak.map(({ p, i: si }, rank) => {
-                const cfg    = { ...DEFAULT_AVATAR, ...p.avatarConfig } as AvatarConfig;
                 const isAnon = p.socialVisibility === 'anonymous';
-                const accent = SLOT_COLORS[si % SLOT_COLORS.length];
+                const [from] = GRADIENTS[si % GRADIENTS.length];
                 const streak = p.currentStreak ?? 0;
                 const pct    = maxStreak > 0 ? (streak / maxStreak) * 100 : 0;
                 const medals = ['🥇', '🥈', '🥉'];
                 return (
-                  <button key={p.id}
+                  <button
+                    key={p.id}
                     onClick={() => setSelected(selected?.id === p.id ? null : p)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 10,
-                      background: 'none', border: 'none', padding: 0, cursor: 'pointer', width: '100%' }}>
-                    <span style={{ fontSize: 14, width: 22, flexShrink: 0, textAlign: 'center' }}>
-                      {medals[rank] ?? `${rank + 1}.`}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    }}
+                  >
+                    <span style={{ fontSize: 16, width: 24, textAlign: 'center', flexShrink: 0 }}>
+                      {medals[rank] ?? <span style={{ fontSize: 11, color: '#3a5070', fontFamily: 'monospace' }}>{rank + 1}</span>}
                     </span>
-                    <div style={{ flexShrink: 0 }}>
-                      <AvatarSprite config={cfg} size={20} isAnonymous={isAnon} />
-                    </div>
-                    <span style={{ fontSize: 9, color: '#6090b8', flex: 1, textTransform: 'uppercase',
-                      letterSpacing: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                    <Avatar name={p.displayName} isAnon={isAnon} gradientIdx={si} size={28} />
+                    <span style={{
+                      fontSize: 13, color: '#8aabca', flex: 1, fontWeight: 500,
+                      overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                      fontFamily: 'system-ui, sans-serif', textAlign: 'left',
+                    }}>
                       {isAnon ? 'Anónimo' : p.displayName}
                     </span>
-                    <div style={{ width: 90, height: 5, background: '#08101c', flexShrink: 0, position: 'relative' }}>
+                    <div style={{ width: 80, height: 4, background: '#111827', borderRadius: 2, flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
                       <motion.div
                         initial={{ width: 0 }} animate={{ width: `${pct}%` }}
                         transition={{ duration: 0.7, delay: rank * 0.08 + 0.2 }}
-                        style={{ position: 'absolute', top: 0, left: 0,
-                          height: '100%', background: accent, boxShadow: `0 0 6px ${accent}80` }}
+                        style={{ position: 'absolute', top: 0, left: 0, height: '100%', background: from, borderRadius: 2 }}
                       />
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#f06020', minWidth: 40, textAlign: 'right' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#f97316', minWidth: 36, textAlign: 'right', fontFamily: 'system-ui, sans-serif' }}>
                       🔥{streak}
                     </span>
                   </button>
@@ -494,13 +552,7 @@ export default function GymWorld() {
         {selected && (() => {
           const si = profiles.findIndex(p => p.id === selected.id);
           return (
-            <ProfileModal
-              key={selected.id}
-              profile={selected}
-              now={now}
-              slotIndex={si >= 0 ? si : 0}
-              onClose={() => setSelected(null)}
-            />
+            <ProfileModal key={selected.id} profile={selected} now={now} idx={si >= 0 ? si : 0} onClose={() => setSelected(null)} />
           );
         })()}
       </AnimatePresence>
