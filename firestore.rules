@@ -63,7 +63,7 @@ service cloud.firestore {
                (!('instagram' in data) || data.instagram is string && data.instagram.size() <= 40) &&
                (!('publicBio' in data) || data.publicBio is string && data.publicBio.size() <= 180) &&
                (!('currentStreak' in data) || data.currentStreak is int && data.currentStreak >= 0) &&
-               (!('photoURL' in data) || data.photoURL is string && data.photoURL.size() <= 512);
+               (!('photoURL' in data) || data.photoURL is string && data.photoURL.size() <= 150000);
       }
 
       allow get: if isSignedIn() && (isOwner(userId) || isAdmin());

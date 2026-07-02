@@ -1,6 +1,5 @@
-import { db, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { 
+import { db } from '@/lib/firebase';
+import {
   doc, 
   setDoc, 
   getDoc, 
@@ -49,6 +48,34 @@ export interface UserProfile {
   };
   createdAt: any;
   updatedAt: any;
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function compressAndEncodePhoto(file: File, maxWidth = 400, quality = 0.82): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(
+        blob => { if (blob) blobToBase64(blob).then(resolve, reject); else reject(new Error('Canvas toBlob failed')); },
+        'image/jpeg', quality,
+      );
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 export class UserService {
@@ -140,11 +167,8 @@ export class UserService {
     await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
   }
 
-  async uploadProfilePhoto(userId: string, file: File): Promise<string> {
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const photoRef = ref(storage, `profile-photos/${userId}.${ext}`);
-    await uploadBytes(photoRef, file, { contentType: file.type });
-    return getDownloadURL(photoRef);
+  async uploadProfilePhoto(_userId: string, file: File): Promise<string> {
+    return compressAndEncodePhoto(file);
   }
 
   async updateUserFields(userId: string, data: Partial<{
