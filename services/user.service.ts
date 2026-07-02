@@ -1,4 +1,5 @@
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   doc, 
   setDoc, 
@@ -38,6 +39,7 @@ export interface UserProfile {
   instagram?: string;
   publicBio?: string;
   currentStreak?: number;
+  photoURL?: string;
   avatarConfig?: {
     sex?: 'male' | 'female';
     hairStyle?: 'short' | 'long' | 'mohawk' | 'bun';
@@ -133,9 +135,16 @@ export class UserService {
     await updateDoc(userRef, { phone, updatedAt: serverTimestamp() });
   }
 
-  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName' | 'phone' | 'socialVisibility' | 'instagram' | 'publicBio' | 'avatarConfig'>>): Promise<void> {
+  async updatePersonalInfo(userId: string, data: Partial<Pick<UserProfile, 'weight' | 'height' | 'gender' | 'otherSports' | 'fitnessLevel' | 'healthObservations' | 'goals' | 'weeklyTrainingGoal' | 'currentPlan' | 'firstName' | 'lastName' | 'phone' | 'socialVisibility' | 'instagram' | 'publicBio' | 'photoURL'>>): Promise<void> {
     const userRef = doc(db, 'users', userId);
     await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
+  }
+
+  async uploadProfilePhoto(userId: string, file: File): Promise<string> {
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const photoRef = ref(storage, `profile-photos/${userId}.${ext}`);
+    await uploadBytes(photoRef, file, { contentType: file.type });
+    return getDownloadURL(photoRef);
   }
 
   async updateUserFields(userId: string, data: Partial<{

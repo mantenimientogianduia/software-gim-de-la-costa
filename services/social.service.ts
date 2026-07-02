@@ -10,6 +10,7 @@ export interface PublicGymPresence {
   instagram?: string;
   publicBio?: string;
   currentStreak?: number;
+  photoURL?: string;
   avatarConfig?: {
     sex?: 'male' | 'female';
     hairStyle?: 'short' | 'long' | 'mohawk' | 'bun';
@@ -49,6 +50,7 @@ export function buildPublicGymPresence(users: any[]): PublicGymPresence[] {
         instagram: normalizeInstagram(user.instagram) || undefined,
         publicBio: user.publicBio || undefined,
         currentStreak: typeof user.currentStreak === 'number' ? user.currentStreak : undefined,
+        photoURL: user.photoURL || undefined,
         avatarConfig: user.avatarConfig || undefined,
       };
     });

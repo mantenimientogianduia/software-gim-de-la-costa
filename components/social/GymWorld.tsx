@@ -47,15 +47,32 @@ function getInitials(name: string, isAnon: boolean): string {
 
 // ── Avatar circular moderno ───────────────────────────────────────────────────
 
-function Avatar({ name, isAnon, gradientIdx, size = 96 }: {
+function Avatar({ name, isAnon, gradientIdx, photoURL, size = 96 }: {
   name: string;
   isAnon: boolean;
   gradientIdx: number;
+  photoURL?: string;
   size?: number;
 }) {
   const [from, to] = GRADIENTS[gradientIdx % GRADIENTS.length];
   const initials   = getInitials(name, isAnon);
   const fontSize   = size * 0.33;
+
+  if (photoURL && !isAnon) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: '50%', flexShrink: 0,
+        overflow: 'hidden', position: 'relative',
+        boxShadow: `0 4px 20px ${from}50`,
+      }}>
+        <img
+          src={photoURL}
+          alt={name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -65,7 +82,6 @@ function Avatar({ name, isAnon, gradientIdx, size = 96 }: {
       position: 'relative', overflow: 'hidden',
       boxShadow: `0 4px 20px ${from}50, 0 1px 0 rgba(255,255,255,0.15) inset`,
     }}>
-      {/* Brillo interno */}
       <div style={{
         position: 'absolute', top: '-20%', left: '-10%',
         width: '70%', height: '60%', borderRadius: '50%',
@@ -165,6 +181,7 @@ function MemberCard({ profile, now, idx, isSelected, onClick }: {
           name={profile.displayName}
           isAnon={isAnon}
           gradientIdx={idx}
+          photoURL={profile.photoURL}
           size={88}
         />
       </div>
@@ -289,7 +306,7 @@ function ProfileModal({ profile, now, idx, onClose }: {
         {/* Avatar centrado sobre el header */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: -52, position: 'relative', zIndex: 10 }}>
           <div style={{ padding: 4, borderRadius: '50%', background: '#0d1424' }}>
-            <Avatar name={profile.displayName} isAnon={isAnon} gradientIdx={idx} size={96} />
+            <Avatar name={profile.displayName} isAnon={isAnon} gradientIdx={idx} photoURL={profile.photoURL} size={96} />
           </div>
         </div>
 
@@ -521,7 +538,7 @@ export default function GymWorld() {
                     <span style={{ fontSize: 16, width: 24, textAlign: 'center', flexShrink: 0 }}>
                       {medals[rank] ?? <span style={{ fontSize: 11, color: '#3a5070', fontFamily: 'monospace' }}>{rank + 1}</span>}
                     </span>
-                    <Avatar name={p.displayName} isAnon={isAnon} gradientIdx={si} size={28} />
+                    <Avatar name={p.displayName} isAnon={isAnon} gradientIdx={si} photoURL={p.photoURL} size={28} />
                     <span style={{
                       fontSize: 13, color: '#8aabca', flex: 1, fontWeight: 500,
                       overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
